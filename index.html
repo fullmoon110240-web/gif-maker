@@ -1,0 +1,2764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>투명 움짤 메이커</title>
+<meta name="description" content="배경이 투명한 PNG 프레임을 이어 투명 움짤(GIF·APNG·WebP)로 만드는 웹 도구. 모든 처리는 브라우저 안에서만 해요.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='%23E0452B' stroke='%231B2129' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  /* An animator's light table: cool diffused white, graphite ink, one red-pencil accent.
+     Layout: sticky light table (preview + timing sheet) on the left, three numbered sheets on the right. */
+  --bg: #E7EBEF;
+  --surface: #FAFBFC;
+  --ink: #1B2129;
+  --ink-2: #56616E;
+  --rule: #CAD2DB;
+  --accent: #CF3B24;
+  --on-accent: #FFFFFF;
+  --check-a: #FFFFFF;
+  --check-b: #DCE2E8;
+  --title-a: #1B2129;
+  --title-b: #8C97A4;
+  --ok: #1E7A4C;
+  --warn: #965300;
+  --err: #B3261E;
+  --font-display: "Black Han Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1318;
+    --surface: #171C23;
+    --ink: #E5E9EE;
+    --ink-2: #9BA6B3;
+    --rule: #2C343E;
+    --accent: #FF6B4E;
+    --on-accent: #1A0B07;
+    --check-a: #2A3139;
+    --check-b: #1E242B;
+    --title-a: #E5E9EE;
+    --title-b: #66717E;
+    --ok: #62CC95;
+    --warn: #F0A646;
+    --err: #FF8076;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1318;
+  --surface: #171C23;
+  --ink: #E5E9EE;
+  --ink-2: #9BA6B3;
+  --rule: #2C343E;
+  --accent: #FF6B4E;
+  --on-accent: #1A0B07;
+  --check-a: #2A3139;
+  --check-b: #1E242B;
+  --title-a: #E5E9EE;
+  --title-b: #66717E;
+  --ok: #62CC95;
+  --warn: #F0A646;
+  --err: #FF8076;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+[hidden] { display: none !important; }
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px clamp(16px, 4vw, 40px) 64px;
+}
+
+/* ---------- masthead ---------- */
+.mast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 32px;
+  align-items: end;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 26px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-synthesis: none;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.see-through {
+  background-color: var(--title-a);
+  background-image:
+    conic-gradient(var(--title-b) 25%, transparent 0 50%, var(--title-b) 0 75%, transparent 0);
+  background-size: 9px 9px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--title-a);
+}
+.lede {
+  margin: 10px 0 0;
+  max-width: 58ch;
+  color: var(--ink-2);
+}
+.spec {
+  display: flex;
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.spec > div {
+  padding: 8px 14px;
+  min-width: 78px;
+}
+.spec > div + div { border-left: 1px solid var(--rule); }
+.spec dt { font-size: 11.5px; color: var(--ink-2); }
+.spec dd {
+  margin: 0;
+  font: 500 15px/1.4 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- layout ---------- */
+.desk {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.sheets { display: grid; gap: 20px; min-width: 0; }
+.desk.wide { grid-template-columns: minmax(0, 1fr); }
+.desk.wide .table { position: static; }
+
+/* ---------- light table ---------- */
+.table {
+  position: sticky;
+  top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 16px 16px;
+  min-width: 0;
+}
+.pegbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  height: 22px;
+  margin: 0 -16px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+.pegbar i {
+  display: block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--rule);
+}
+.pegbar i.slot { width: 28px; border-radius: 4px; }
+.stage-wrap { display: flex; justify-content: center; min-height: 120px; }
+.stage {
+  position: relative;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 240px;
+  height: 600px;
+}
+.stage[data-bg="check"] {
+  background-color: var(--check-a);
+  background-image: conic-gradient(var(--check-b) 25%, transparent 0 50%, var(--check-b) 0 75%, transparent 0);
+  background-size: 16px 16px;
+}
+.stage[data-bg="white"] { background: #FFFFFF; }
+.stage[data-bg="black"] { background: #000000; }
+.stage canvas, .stage img { display: block; width: 100%; height: 100%; }
+.tag {
+  position: absolute;
+  top: 8px; left: 8px;
+  font: 600 11px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+  padding: 5px 7px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.stage-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.icon {
+  display: grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0;
+}
+.icon svg { width: 16px; height: 16px; }
+.icon:hover { border-color: var(--ink-2); }
+.icon.play { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.icon.play .i-play { display: none; }
+.icon.play[data-state="paused"] .i-play { display: block; }
+.icon.play[data-state="paused"] .i-pause { display: none; }
+.counter {
+  margin-left: 6px;
+  font: 400 13px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.counter b { color: var(--ink); font-weight: 600; font-size: 15px; }
+.counter .sep { margin: 0 3px; }
+.bgswitch { margin-left: auto; display: flex; gap: 5px; }
+.bgswitch button {
+  width: 22px; height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+}
+.bgswitch [data-bg="check"] {
+  background-color: #FFFFFF;
+  background-image: conic-gradient(#C3CBD4 25%, transparent 0 50%, #C3CBD4 0 75%, transparent 0);
+  background-size: 8px 8px;
+}
+.bgswitch [data-bg="white"] { background: #FFFFFF; }
+.bgswitch [data-bg="black"] { background: #000000; }
+.bgswitch [aria-checked="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+
+/* timing sheet: one cell per frame, width = how long it stays on screen */
+.xsheet {
+  display: flex;
+  height: 38px;
+  margin-top: 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.xsheet .c {
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  place-items: center;
+  padding: 3px 0 2px;
+  border: 0;
+  border-right: 1px solid var(--rule);
+  background: transparent;
+  font: 500 10px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.xsheet .c:last-child { border-right: 0; }
+.xsheet .c .n { color: var(--ink); font-weight: 600; }
+.xsheet .c:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.xsheet .c.on { background: var(--accent); color: var(--on-accent); }
+.xsheet .c.on .n { color: var(--on-accent); }
+.xsheet .c.tiny span { display: none; }
+.xnote, .pvnote {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.xnote b { font: 600 12.5px var(--font-mono); color: var(--ink); }
+.pvnote:empty { display: none; }
+
+/* ---------- sheets ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px 20px 20px;
+  min-width: 0;
+}
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.step {
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 5px;
+}
+h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.tools { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+.ghost {
+  font-size: 13px;
+  padding: 6px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+}
+.ghost:hover:not(:disabled) { border-color: var(--ink-2); }
+.ghost:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.drop {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 22px 16px;
+  text-align: center;
+  border: 1.5px dashed var(--ink-2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s;
+}
+.drop:hover, .drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.drop-main { font-weight: 600; }
+.drop-main u { text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.drop-sub { font-size: 12.5px; color: var(--ink-2); }
+.status { margin: 10px 0 0; min-height: 1.5em; font-size: 13px; color: var(--ink-2); }
+.status.warn { color: var(--warn); }
+
+.strip {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 8px 0 0;
+  padding: 2px 6px 4px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.strip:empty { display: none; }
+.cell {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 58px;
+  padding: 6px 5px 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
+.cell:hover, .cell:focus-visible { border-color: var(--rule); background: var(--bg); }
+.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.cell .no { font: 600 11px/1 var(--font-mono); color: var(--ink); }
+.cell canvas {
+  display: block;
+  border: 1px solid var(--rule);
+  background-color: var(--check-a);
+  background-image: conic-gradient(var(--check-b) 25%, transparent 0 50%, var(--check-b) 0 75%, transparent 0);
+  background-size: 8px 8px;
+}
+.cell .nm {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 10px/1.2 var(--font-mono);
+  color: var(--ink-2);
+}
+.cell .rm {
+  position: absolute;
+  top: 1px; right: 1px;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px; line-height: 1;
+  opacity: 0;
+}
+.cell:hover .rm, .cell:focus-within .rm { opacity: 1; }
+.cell .rm:hover { color: var(--err); border-color: var(--err); }
+.cell.odd canvas { border: 2px solid var(--warn); }
+.cell.dragging { opacity: 0.35; }
+.cell.before::before, .cell.after::after {
+  content: "";
+  position: absolute;
+  top: 4px; bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.cell.before::before { left: -6px; }
+.cell.after::after { right: -6px; }
+
+/* ---------- settings ---------- */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 24px;
+}
+.field { min-width: 0; }
+.field + .field { margin-top: 0; }
+.label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 7px; }
+.label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.label-row output { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.row { display: flex; align-items: center; gap: 8px; }
+.row.wrap { flex-wrap: wrap; }
+.unit { color: var(--ink-2); }
+.help { margin: 6px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); max-width: 62ch; }
+.help.warn { color: var(--warn); }
+input[type="number"] {
+  width: 96px;
+  padding: 8px 10px;
+  font: 500 16px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+}
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+input[type="color"] {
+  width: 38px; height: 34px;
+  padding: 2px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+}
+input[type="color"]:disabled { opacity: 0.35; }
+
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span {
+  display: block;
+  padding: 7px 12px;
+  font-size: 13.5px;
+  border-right: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.seg label:last-child span { border-right: 0; }
+.seg input:checked + span { background: var(--ink); color: var(--surface); font-weight: 600; }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -3px; }
+.seg input:disabled + span { opacity: 0.4; }
+
+.formats {
+  margin: 20px 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.formats legend { padding: 0; }
+.fmt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.fmt {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 12px 12px 13px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--surface);
+}
+.fmt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.fmt-name { font: 600 15px/1.2 var(--font-mono); display: flex; align-items: center; gap: 8px; }
+.fmt-name::before {
+  content: "";
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-2);
+  flex: none;
+}
+.fmt-desc { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+.fmt:hover { border-color: var(--ink-2); }
+.fmt:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.fmt:has(input:checked) .fmt-name::before { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+.fmt:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fmt:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+.detail {
+  display: grid;
+  gap: 18px;
+  margin: 20px 0 0;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  min-width: 0;
+}
+.detail legend { padding: 0 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; position: relative; }
+.switch input { position: absolute; opacity: 0; width: 36px; height: 20px; margin: 0; cursor: pointer; }
+.switch .track {
+  position: relative;
+  width: 36px; height: 20px;
+  border-radius: 10px;
+  background: var(--rule);
+  transition: background-color .15s;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform .15s;
+}
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(16px); }
+.switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- make ---------- */
+.make-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.primary {
+  min-width: 190px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, var(--ink)); }
+.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.progress { margin-top: 14px; }
+.bar { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+#progText { margin: 7px 0 0; font: 400 12.5px var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--err);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--err) 9%, transparent);
+  color: var(--err);
+  font-size: 13.5px;
+}
+.result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin: 18px 0 0;
+  padding-top: 18px;
+  border-top: 1px dashed var(--rule);
+}
+.result .stage { width: 160px; height: 400px; }
+.result.wide { grid-template-columns: minmax(0, 1fr); }
+.result img { object-fit: contain; }
+.stale {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 7px 16px;
+  margin: 0 0 16px;
+}
+.facts dt { font-size: 12.5px; color: var(--ink-2); padding-top: 2px; }
+.facts dd { margin: 0; font: 500 14px var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.facts dd.big { font-size: 18px; font-weight: 600; }
+.save-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.dropveil {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  border: 3px dashed var(--accent);
+  pointer-events: none;
+}
+.dropveil p { font: 400 30px var(--font-display); margin: 0; color: var(--ink); }
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 880px) {
+  .desk { grid-template-columns: minmax(0, 1fr); }
+  .table { position: static; }
+  .mast { grid-template-columns: minmax(0, 1fr); }
+  .spec { flex-wrap: wrap; justify-self: start; }
+}
+@media (max-width: 600px) {
+  .fmt-grid { grid-template-columns: minmax(0, 1fr); }
+  .result { grid-template-columns: minmax(0, 1fr); }
+  .result .stage { margin: 0 auto; }
+  .spec > div { min-width: 0; padding: 6px 10px; }
+  .primary { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="mast">
+    <div class="mast-text">
+      <h1><span class="see-through">투명</span> 움짤 메이커</h1>
+      <p class="lede">PNG 프레임을 순서대로 이어 배경이 투명한 움짤 한 장으로 만들어요. 파일은 이 브라우저 안에서만 처리되고 어디에도 올라가지 않아요.</p>
+    </div>
+    <dl class="spec" aria-label="지금 만들 움짤">
+      <div><dt>프레임</dt><dd id="specFrames">–</dd></div>
+      <div><dt>크기</dt><dd id="specSize">–</dd></div>
+      <div><dt>재생</dt><dd id="specTime">–</dd></div>
+      <div><dt>형식</dt><dd id="specFmt">–</dd></div>
+    </dl>
+  </header>
+
+  <main class="desk">
+    <section class="table" aria-labelledby="pvTitle">
+      <div class="pegbar" aria-hidden="true"><i></i><i class="slot"></i><i></i></div>
+      <h2 id="pvTitle" class="sr-only">미리보기</h2>
+      <div class="stage-wrap" id="stageWrap">
+        <div class="stage" id="stage" data-bg="check">
+          <canvas id="pv" width="300" height="760" role="img" aria-label="움짤 미리보기"></canvas>
+          <span class="tag" id="stageTag" hidden>예시</span>
+          <p class="stage-empty" id="stageEmpty" hidden>프레임을 넣으면<br>여기서 움직여요</p>
+        </div>
+      </div>
+      <div class="transport">
+        <button type="button" class="icon" id="prevBtn" aria-label="이전 프레임">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 3.5 6 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="icon play" id="playBtn" aria-label="일시정지" data-state="playing">
+          <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="2.6" height="10" rx="0.8" fill="currentColor"/><rect x="9.4" y="3" width="2.6" height="10" rx="0.8" fill="currentColor"/></svg>
+          <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6c0 .5.5.8.9.5l7.2-4.8a.6.6 0 0 0 0-1L5.9 2.7c-.4-.3-.9 0-.9.5Z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="icon" id="nextBtn" aria-label="다음 프레임">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5 10 8l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="counter"><b id="fNow">00</b><span class="sep">/</span><span id="fAll">00</span></span>
+        <div class="bgswitch" role="radiogroup" aria-label="미리보기 배경">
+          <button type="button" role="radio" data-bg="check" aria-checked="true" aria-label="체크무늬 배경"></button>
+          <button type="button" role="radio" data-bg="white" aria-checked="false" aria-label="흰 배경"></button>
+          <button type="button" role="radio" data-bg="black" aria-checked="false" aria-label="검은 배경"></button>
+        </div>
+      </div>
+      <div class="xsheet" id="xsheet" role="group" aria-label="프레임별 표시 시간"></div>
+      <p class="xnote" id="xnote"></p>
+      <p class="pvnote" id="pvnote"></p>
+    </section>
+
+    <div class="sheets">
+      <section class="panel" aria-labelledby="h-frames">
+        <header class="panel-head">
+          <span class="step">01</span>
+          <h2 id="h-frames">프레임</h2>
+          <div class="tools">
+            <button type="button" class="ghost" id="sortBtn">이름순 정렬</button>
+            <button type="button" class="ghost" id="revBtn">순서 뒤집기</button>
+            <button type="button" class="ghost" id="clearBtn">모두 빼기</button>
+          </div>
+        </header>
+        <label class="drop" id="drop" for="fileInput">
+          <input id="fileInput" type="file" accept="image/png,image/webp,image/gif,image/jpeg" multiple>
+          <span class="drop-main">PNG를 여기에 끌어다 놓거나 <u>파일 고르기</u></span>
+          <span class="drop-sub">여러 장을 한 번에 고르면 파일 이름 순서(1, 2, … 10, 11)로 들어가요.</span>
+        </label>
+        <p class="status" id="frameStatus" role="status"></p>
+        <ol class="strip" id="strip" aria-label="프레임 순서. 끌어서 순서를 바꾸거나, 선택한 뒤 Alt와 화살표 키로 옮길 수 있어요."></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="h-set">
+        <header class="panel-head">
+          <span class="step">02</span>
+          <h2 id="h-set">설정</h2>
+        </header>
+        <div class="grid2">
+          <div class="field">
+            <label class="label" for="dur">전체 재생 시간</label>
+            <div class="row">
+              <input id="dur" type="number" inputmode="decimal" min="0.1" max="60" step="0.05" value="1">
+              <span class="unit">초</span>
+            </div>
+            <p class="help" id="durHelp"></p>
+          </div>
+          <div class="field">
+            <span class="label" id="l-loop">반복</span>
+            <div class="seg" role="radiogroup" aria-labelledby="l-loop">
+              <label><input type="radio" name="loop" value="0" id="loop0"><span>계속 반복</span></label>
+              <label><input type="radio" name="loop" value="1" id="loop1"><span>한 번만</span></label>
+            </div>
+          </div>
+        </div>
+
+        <fieldset class="formats">
+          <legend class="label">파일 형식</legend>
+          <div class="fmt-grid">
+          <label class="fmt"><input type="radio" name="fmt" value="gif" id="fmtGif">
+            <span class="fmt-name">GIF</span>
+            <span class="fmt-desc">어디서나 재생돼요. 픽셀이 ‘완전 투명’ 아니면 ‘불투명’이라 반투명한 테두리는 둘 중 하나로 정리돼요.</span>
+          </label>
+          <label class="fmt"><input type="radio" name="fmt" value="apng" id="fmtApng">
+            <span class="fmt-name">APNG</span>
+            <span class="fmt-desc">반투명까지 원본 그대로예요. 용량이 크고 확장자는 .png예요. 일부 앱에선 첫 장만 보여요.</span>
+          </label>
+          <label class="fmt"><input type="radio" name="fmt" value="webp" id="fmtWebp">
+            <span class="fmt-name">WebP</span>
+            <span class="fmt-desc" id="webpDesc">반투명을 살리면서 용량이 가장 작아요. 일부 앱은 재생하지 못해요.</span>
+          </label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <span class="label" id="l-scale">출력 크기</span>
+          <div class="seg" role="radiogroup" aria-labelledby="l-scale">
+            <label><input type="radio" name="scale" value="1" id="sc100"><span>100%</span></label>
+            <label><input type="radio" name="scale" value="0.75" id="sc75"><span>75%</span></label>
+            <label><input type="radio" name="scale" value="0.5" id="sc50"><span>50%</span></label>
+            <label><input type="radio" name="scale" value="0.25" id="sc25"><span>25%</span></label>
+          </div>
+          <p class="help" id="scaleHelp"></p>
+        </div>
+
+        <fieldset class="detail" id="gifOpts">
+          <legend>GIF 세부 설정</legend>
+          <div class="field">
+            <div class="label-row"><label class="label" for="th">투명 기준</label><output id="thOut" for="th"></output></div>
+            <input id="th" type="range" min="1" max="254" step="1">
+            <p class="help">불투명도가 이 값보다 낮은 픽셀은 투명, 나머지는 불투명이 돼요. 테두리가 너무 가늘면 값을 낮추세요.</p>
+          </div>
+          <div class="field">
+            <span class="label" id="l-matte">반투명 테두리에 섞을 배경색</span>
+            <div class="row wrap">
+              <div class="seg" role="radiogroup" aria-labelledby="l-matte">
+                <label><input type="radio" name="matte" value="none" id="mtNone"><span>섞지 않음</span></label>
+                <label><input type="radio" name="matte" value="white" id="mtWhite"><span>흰색</span></label>
+                <label><input type="radio" name="matte" value="black" id="mtBlack"><span>검정</span></label>
+                <label><input type="radio" name="matte" value="custom" id="mtCustom"><span>직접</span></label>
+              </div>
+              <input type="color" id="matteColor" aria-label="섞을 배경색 고르기">
+            </div>
+            <p class="help">움짤을 올릴 곳의 배경색을 고르면 테두리가 그 색에 자연스럽게 묻어요.</p>
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <span class="label" id="l-colors">색 수</span>
+              <div class="seg" role="radiogroup" aria-labelledby="l-colors">
+                <label><input type="radio" name="colors" value="256" id="c256"><span>256</span></label>
+                <label><input type="radio" name="colors" value="128" id="c128"><span>128</span></label>
+                <label><input type="radio" name="colors" value="64" id="c64"><span>64</span></label>
+                <label><input type="radio" name="colors" value="32" id="c32"><span>32</span></label>
+              </div>
+              <p class="help">적을수록 용량이 줄고 색이 거칠어져요.</p>
+            </div>
+            <div class="field">
+              <span class="label">디더링</span>
+              <label class="switch"><input type="checkbox" id="dither"><span class="track" aria-hidden="true"></span><span>그라데이션 부드럽게</span></label>
+              <p class="help">켜면 색 경계가 부드러워지지만 용량이 커져요.</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="detail" id="webpOpts" hidden>
+          <legend>WebP 세부 설정</legend>
+          <div class="field">
+            <div class="label-row"><label class="label" for="wq">화질</label><output id="wqOut" for="wq"></output></div>
+            <input id="wq" type="range" min="50" max="100" step="1">
+            <p class="help">높을수록 선명하고 용량이 커져요.</p>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="panel" aria-labelledby="h-make">
+        <header class="panel-head">
+          <span class="step">03</span>
+          <h2 id="h-make">만들기</h2>
+        </header>
+        <div class="make-row">
+          <button type="button" class="primary" id="makeBtn">GIF 만들기</button>
+          <button type="button" class="ghost" id="cancelBtn" hidden>취소</button>
+        </div>
+        <div class="progress" id="progress" hidden>
+          <div class="bar"><i id="bar"></i></div>
+          <p id="progText" role="status" aria-live="polite"></p>
+        </div>
+        <p class="error" id="error" role="alert" hidden></p>
+        <figure class="result" id="result" hidden>
+          <div class="stage out" id="outStage" data-bg="check"><img id="outImg" alt="만든 움짤"></div>
+          <figcaption>
+            <p class="stale" id="stale" hidden>설정이나 프레임이 바뀌었어요. 다시 만들어야 반영돼요.</p>
+            <dl class="facts" id="facts"></dl>
+            <div class="save-row"><button type="button" class="primary" id="saveBtn">다운로드</button></div>
+            <p class="help" id="saveNote" role="status"></p>
+            <p class="help" id="sizeNote"></p>
+          </figcaption>
+        </figure>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="dropveil" id="dropveil" hidden><p>놓으면 프레임으로 들어가요</p></div>
+
+<script id="core-src">
+/* 투명 움짤 메이커 — encoder core.
+   Transparent GIF (per-frame palettes, frame differencing, exact timing),
+   lossless APNG, and an animated-WebP muxer.
+   No DOM access: the same source runs inside a Web Worker or on the main thread. */
+var UMCore = (function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------- bytes */
+
+  class Sink {
+    constructor(cap) {
+      this.parts = [];
+      this.buf = new Uint8Array(cap || 1 << 16);
+      this.pos = 0;
+      this.flushed = 0;
+    }
+    get length() { return this.flushed + this.pos; }
+    flush() {
+      if (this.pos > 0) {
+        this.parts.push(this.buf.slice(0, this.pos));
+        this.flushed += this.pos;
+        this.pos = 0;
+      }
+    }
+    u8(v) {
+      if (this.pos === this.buf.length) this.flush();
+      this.buf[this.pos++] = v;
+    }
+    u16le(v) { this.u8(v & 255); this.u8((v >>> 8) & 255); }
+    u24le(v) { this.u8(v & 255); this.u8((v >>> 8) & 255); this.u8((v >>> 16) & 255); }
+    u32le(v) { this.u16le(v & 0xffff); this.u16le((v >>> 16) & 0xffff); }
+    u32be(v) { this.u8((v >>> 24) & 255); this.u8((v >>> 16) & 255); this.u8((v >>> 8) & 255); this.u8(v & 255); }
+    ascii(s) { for (let i = 0; i < s.length; i++) this.u8(s.charCodeAt(i) & 255); }
+    bytes(a) {
+      const n = a.length;
+      if (n <= this.buf.length - this.pos) { this.buf.set(a, this.pos); this.pos += n; return; }
+      this.flush();
+      if (n <= this.buf.length) { this.buf.set(a, 0); this.pos = n; return; }
+      this.parts.push(a.slice());
+      this.flushed += n;
+    }
+    /* take a buffer the caller will never touch again (no copy) */
+    adopt(a) {
+      this.flush();
+      this.parts.push(a);
+      this.flushed += a.length;
+    }
+    finish() { this.flush(); return this.parts; }
+  }
+
+  const CRC_TABLE = (function () {
+    const t = new Int32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c;
+    }
+    return t;
+  })();
+
+  function crc32(buf, crc) {
+    let c = (crc || 0) ^ -1;
+    for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 255] ^ (c >>> 8);
+    return (c ^ -1) >>> 0;
+  }
+
+  /* Split a total duration into n integer steps that add up exactly.
+     GIF counts in 1/100 s, so 1 s over 15 frames becomes 7,6,7,7,6,... (=100). */
+  function splitDuration(total, n) {
+    const out = [];
+    let prev = 0;
+    for (let i = 0; i < n; i++) {
+      const next = Math.round(((i + 1) * total) / n);
+      out.push(next - prev);
+      prev = next;
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------- colour search */
+
+  /* Nearest palette entry by squared RGB distance. Entries are sorted by green
+     so the scan can stop as soon as the green gap alone exceeds the best match. */
+  function makeNearest(pr, pg, pb, n) {
+    const order = [];
+    for (let i = 0; i < n; i++) order.push(i);
+    order.sort((a, b) => pg[a] - pg[b]);
+    const sr = new Float64Array(n), sg = new Float64Array(n), sb = new Float64Array(n);
+    const si = new Int32Array(n);
+    for (let i = 0; i < n; i++) {
+      const j = order[i];
+      sr[i] = pr[j]; sg[i] = pg[j]; sb[i] = pb[j]; si[i] = j;
+    }
+    return function nearest(r, g, b) {
+      let lo = 0, hi = n - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (sg[mid] < g) lo = mid + 1; else hi = mid;
+      }
+      let best = Infinity, bi = lo;
+      let up = lo, dn = lo - 1;
+      while (up < n || dn >= 0) {
+        if (up < n) {
+          const dg = sg[up] - g, dg2 = dg * dg;
+          if (dg2 >= best) up = n;
+          else {
+            const dr = sr[up] - r, db = sb[up] - b;
+            const d = dr * dr + dg2 + db * db;
+            if (d < best) { best = d; bi = up; }
+            up++;
+          }
+        }
+        if (dn >= 0) {
+          const dg = g - sg[dn], dg2 = dg * dg;
+          if (dg2 >= best) dn = -1;
+          else {
+            const dr = sr[dn] - r, db = sb[dn] - b;
+            const d = dr * dr + dg2 + db * db;
+            if (d < best) { best = d; bi = dn; }
+            dn--;
+          }
+        }
+      }
+      return si[bi];
+    };
+  }
+
+  /* --------------------------------------- Wu quantiser + k-means polish */
+
+  const S33 = 33, S1089 = 33 * 33, WU_SIZE = 33 * 33 * 33;
+
+  class Histogram {
+    constructor() {
+      const N6 = 1 << 18;
+      this.n = new Float64Array(N6);
+      this.r = new Float64Array(N6);
+      this.g = new Float64Array(N6);
+      this.b = new Float64Array(N6);
+      this.s = new Float64Array(N6);
+      this.touched = new Int32Array(N6);
+      this.count = 0;
+      this.wt = new Float64Array(WU_SIZE);
+      this.mr = new Float64Array(WU_SIZE);
+      this.mg = new Float64Array(WU_SIZE);
+      this.mb = new Float64Array(WU_SIZE);
+      this.m2 = new Float64Array(WU_SIZE);
+    }
+    clear() {
+      const t = this.touched;
+      for (let i = 0; i < this.count; i++) {
+        const k = t[i];
+        this.n[k] = 0; this.r[k] = 0; this.g[k] = 0; this.b[k] = 0; this.s[k] = 0;
+      }
+      this.count = 0;
+    }
+  }
+
+  function wuPalette(h, K) {
+    const wt = h.wt, mr = h.mr, mg = h.mg, mb = h.mb, m2 = h.m2;
+    wt.fill(0); mr.fill(0); mg.fill(0); mb.fill(0); m2.fill(0);
+    for (let i = 0; i < h.count; i++) {
+      const k = h.touched[i];
+      const r5 = (k >>> 13) & 31, g5 = (k >>> 7) & 31, b5 = (k >>> 1) & 31;
+      const ind = (r5 + 1) * S1089 + (g5 + 1) * S33 + (b5 + 1);
+      wt[ind] += h.n[k]; mr[ind] += h.r[k]; mg[ind] += h.g[k]; mb[ind] += h.b[k]; m2[ind] += h.s[k];
+    }
+    // cumulative moments
+    const area = new Float64Array(S33), areaR = new Float64Array(S33), areaG = new Float64Array(S33),
+      areaB = new Float64Array(S33), area2 = new Float64Array(S33);
+    for (let r = 1; r <= 32; r++) {
+      area.fill(0); areaR.fill(0); areaG.fill(0); areaB.fill(0); area2.fill(0);
+      for (let g = 1; g <= 32; g++) {
+        let line = 0, lineR = 0, lineG = 0, lineB = 0, line2 = 0;
+        for (let b = 1; b <= 32; b++) {
+          const i1 = r * S1089 + g * S33 + b;
+          line += wt[i1]; lineR += mr[i1]; lineG += mg[i1]; lineB += mb[i1]; line2 += m2[i1];
+          area[b] += line; areaR[b] += lineR; areaG[b] += lineG; areaB[b] += lineB; area2[b] += line2;
+          const i2 = i1 - S1089;
+          wt[i1] = wt[i2] + area[b];
+          mr[i1] = mr[i2] + areaR[b];
+          mg[i1] = mg[i2] + areaG[b];
+          mb[i1] = mb[i2] + areaB[b];
+          m2[i1] = m2[i2] + area2[b];
+        }
+      }
+    }
+    const at = (m, r, g, b) => m[r * S1089 + g * S33 + b];
+    const vol = (c, m) =>
+      at(m, c.r1, c.g1, c.b1) - at(m, c.r1, c.g1, c.b0) - at(m, c.r1, c.g0, c.b1) + at(m, c.r1, c.g0, c.b0) -
+      at(m, c.r0, c.g1, c.b1) + at(m, c.r0, c.g1, c.b0) + at(m, c.r0, c.g0, c.b1) - at(m, c.r0, c.g0, c.b0);
+    const bottom = (c, dir, m) => {
+      if (dir === 0) return -at(m, c.r0, c.g1, c.b1) + at(m, c.r0, c.g1, c.b0) + at(m, c.r0, c.g0, c.b1) - at(m, c.r0, c.g0, c.b0);
+      if (dir === 1) return -at(m, c.r1, c.g0, c.b1) + at(m, c.r1, c.g0, c.b0) + at(m, c.r0, c.g0, c.b1) - at(m, c.r0, c.g0, c.b0);
+      return -at(m, c.r1, c.g1, c.b0) + at(m, c.r1, c.g0, c.b0) + at(m, c.r0, c.g1, c.b0) - at(m, c.r0, c.g0, c.b0);
+    };
+    const top = (c, dir, pos, m) => {
+      if (dir === 0) return at(m, pos, c.g1, c.b1) - at(m, pos, c.g1, c.b0) - at(m, pos, c.g0, c.b1) + at(m, pos, c.g0, c.b0);
+      if (dir === 1) return at(m, c.r1, pos, c.b1) - at(m, c.r1, pos, c.b0) - at(m, c.r0, pos, c.b1) + at(m, c.r0, pos, c.b0);
+      return at(m, c.r1, c.g1, pos) - at(m, c.r1, c.g0, pos) - at(m, c.r0, c.g1, pos) + at(m, c.r0, c.g0, pos);
+    };
+    const variance = (c) => {
+      const dr = vol(c, mr), dg = vol(c, mg), db = vol(c, mb);
+      const xx = vol(c, m2);
+      const w = vol(c, wt);
+      return w > 0 ? xx - (dr * dr + dg * dg + db * db) / w : 0;
+    };
+    const maximize = (c, dir, first, last, wr, wg, wb, ww) => {
+      const br = bottom(c, dir, mr), bg = bottom(c, dir, mg), bb = bottom(c, dir, mb), bw = bottom(c, dir, wt);
+      let max = 0, cut = -1;
+      for (let i = first; i < last; i++) {
+        let hr = br + top(c, dir, i, mr), hg = bg + top(c, dir, i, mg), hb = bb + top(c, dir, i, mb), hw = bw + top(c, dir, i, wt);
+        if (hw === 0) continue;
+        let t = (hr * hr + hg * hg + hb * hb) / hw;
+        hr = wr - hr; hg = wg - hg; hb = wb - hb; hw = ww - hw;
+        if (hw === 0) continue;
+        t += (hr * hr + hg * hg + hb * hb) / hw;
+        if (t > max) { max = t; cut = i; }
+      }
+      return [max, cut];
+    };
+    const cutBox = (a, b) => {
+      const wr = vol(a, mr), wg = vol(a, mg), wb = vol(a, mb), ww = vol(a, wt);
+      const [maxr, cutr] = maximize(a, 0, a.r0 + 1, a.r1, wr, wg, wb, ww);
+      const [maxg, cutg] = maximize(a, 1, a.g0 + 1, a.g1, wr, wg, wb, ww);
+      const [maxb, cutb] = maximize(a, 2, a.b0 + 1, a.b1, wr, wg, wb, ww);
+      let dir;
+      if (maxr >= maxg && maxr >= maxb) { dir = 0; if (cutr < 0) return false; }
+      else if (maxg >= maxr && maxg >= maxb) dir = 1;
+      else dir = 2;
+      b.r1 = a.r1; b.g1 = a.g1; b.b1 = a.b1;
+      if (dir === 0) { b.r0 = a.r1 = cutr; b.g0 = a.g0; b.b0 = a.b0; }
+      else if (dir === 1) { b.g0 = a.g1 = cutg; b.r0 = a.r0; b.b0 = a.b0; }
+      else { b.b0 = a.b1 = cutb; b.r0 = a.r0; b.g0 = a.g0; }
+      a.vol = (a.r1 - a.r0) * (a.g1 - a.g0) * (a.b1 - a.b0);
+      b.vol = (b.r1 - b.r0) * (b.g1 - b.g0) * (b.b1 - b.b0);
+      return true;
+    };
+    const cubes = [];
+    for (let i = 0; i < K; i++) cubes.push({ r0: 0, r1: 0, g0: 0, g1: 0, b0: 0, b1: 0, vol: 0 });
+    const c0 = cubes[0];
+    c0.r1 = c0.g1 = c0.b1 = 32;
+    const vv = new Float64Array(K);
+    let next = 0, count = K;
+    for (let i = 1; i < K; i++) {
+      if (cutBox(cubes[next], cubes[i])) {
+        vv[next] = cubes[next].vol > 1 ? variance(cubes[next]) : 0;
+        vv[i] = cubes[i].vol > 1 ? variance(cubes[i]) : 0;
+      } else {
+        vv[next] = 0;
+        i--;
+      }
+      next = 0;
+      let temp = vv[0];
+      for (let k = 1; k <= i; k++) if (vv[k] > temp) { temp = vv[k]; next = k; }
+      if (temp <= 0) { count = i + 1; break; }
+    }
+    const pr = [], pg = [], pb = [];
+    for (let k = 0; k < count; k++) {
+      const w = vol(cubes[k], wt);
+      if (w > 0) {
+        pr.push(vol(cubes[k], mr) / w);
+        pg.push(vol(cubes[k], mg) / w);
+        pb.push(vol(cubes[k], mb) / w);
+      }
+    }
+    return { r: pr, g: pg, b: pb, n: pr.length };
+  }
+
+  /* Lloyd iterations over the 6-bit histogram, starting from Wu's boxes. */
+  function polishPalette(h, pal, iterations) {
+    let pr = pal.r.slice(), pg = pal.g.slice(), pb = pal.b.slice();
+    const n = pal.n;
+    for (let it = 0; it < iterations; it++) {
+      const nearest = makeNearest(pr, pg, pb, n);
+      const sw = new Float64Array(n), sr = new Float64Array(n), sg = new Float64Array(n), sb = new Float64Array(n);
+      for (let i = 0; i < h.count; i++) {
+        const k = h.touched[i];
+        const w = h.n[k];
+        const j = nearest(h.r[k] / w, h.g[k] / w, h.b[k] / w);
+        sw[j] += w; sr[j] += h.r[k]; sg[j] += h.g[k]; sb[j] += h.b[k];
+      }
+      for (let j = 0; j < n; j++) {
+        if (sw[j] > 0) { pr[j] = sr[j] / sw[j]; pg[j] = sg[j] / sw[j]; pb[j] = sb[j] / sw[j]; }
+      }
+    }
+    const r = new Uint8Array(n), g = new Uint8Array(n), b = new Uint8Array(n);
+    for (let j = 0; j < n; j++) {
+      r[j] = Math.max(0, Math.min(255, Math.round(pr[j])));
+      g[j] = Math.max(0, Math.min(255, Math.round(pg[j])));
+      b[j] = Math.max(0, Math.min(255, Math.round(pb[j])));
+    }
+    return { r, g, b, n };
+  }
+
+  /* ------------------------------------------------------------------ LZW */
+
+  function lzwEncode(sink, pixels, n, minCodeSize, dict, used) {
+    sink.u8(minCodeSize);
+    const clear = 1 << minCodeSize, eoi = clear + 1;
+    let next = eoi + 1, size = minCodeSize + 1, limit = 1 << size;
+    let acc = 0, bits = 0, nUsed = 0;
+    const blk = new Uint8Array(255);
+    let bl = 0;
+    const emit = (code) => {
+      acc |= code << bits;
+      bits += size;
+      while (bits >= 8) {
+        blk[bl++] = acc & 255;
+        acc >>>= 8;
+        bits -= 8;
+        if (bl === 255) { sink.u8(255); sink.bytes(blk); bl = 0; }
+      }
+    };
+    emit(clear);
+    let prefix = pixels[0];
+    for (let i = 1; i < n; i++) {
+      const k = pixels[i];
+      const key = (prefix << 8) | k;
+      const c = dict[key];
+      if (c !== 0) { prefix = c; continue; }
+      emit(prefix);
+      if (next < 4096) {
+        dict[key] = next;
+        used[nUsed++] = key;
+        next++;
+        if (next > limit && size < 12) { size++; limit <<= 1; }
+      } else {
+        emit(clear);
+        for (let j = 0; j < nUsed; j++) dict[used[j]] = 0;
+        nUsed = 0;
+        next = eoi + 1; size = minCodeSize + 1; limit = 1 << size;
+      }
+      prefix = k;
+    }
+    emit(prefix);
+    emit(eoi);
+    if (bits > 0) {
+      blk[bl++] = acc & 255;
+      if (bl === 255) { sink.u8(255); sink.bytes(blk); bl = 0; }
+    }
+    if (bl > 0) { sink.u8(bl); sink.bytes(blk.subarray(0, bl)); }
+    sink.u8(0);
+    for (let j = 0; j < nUsed; j++) dict[used[j]] = 0;
+  }
+
+  /* ------------------------------------------------------------------ GIF */
+
+  const DITHER_STRENGTH = 0.85;
+
+  class GifEncoder {
+    /* opt: { loop: 0 = forever | 1 = once, threshold: 1..255, matte: [r,g,b] | null,
+              dither: bool, colors: 2..256 (one slot is kept for transparency) } */
+    constructor(W, H, opt) {
+      this.W = W; this.H = H;
+      this.loop = opt.loop | 0;
+      this.threshold = Math.max(1, Math.min(255, opt.threshold | 0 || 128));
+      this.matte = opt.matte || null;
+      this.dither = !!opt.dither;
+      this.maxColors = Math.max(2, Math.min(256, opt.colors | 0 || 256));
+      this.sink = new Sink(1 << 20);
+      this.mask = new Uint8Array(W * H);
+      this.out = new Uint8Array(W * H);
+      this.dict = new Uint16Array(1 << 20);
+      this.used = new Int32Array(4096);
+      this.hist = null;
+      this.cache = null;
+      this.errA = new Float32Array((W + 2) * 3);
+      this.errB = new Float32Array((W + 2) * 3);
+      this.prev = null;
+      this.prevRect = null;
+      this.prevDisp = 1;
+      this.stats = [];
+      this.writeHeader();
+    }
+
+    writeHeader() {
+      const s = this.sink;
+      s.ascii('GIF89a');
+      s.u16le(this.W); s.u16le(this.H);
+      s.u8(0x70); // no global colour table; colour resolution 8 bits
+      s.u8(0);    // background index
+      s.u8(0);    // pixel aspect
+      if (this.loop === 0) {
+        s.u8(0x21); s.u8(0xFF); s.u8(11); s.ascii('NETSCAPE2.0');
+        s.u8(3); s.u8(1); s.u16le(0); s.u8(0);
+      }
+    }
+
+    /* RGBA (unpremultiplied) → packed target: 0 = transparent, else 0xFFbbggrr. */
+    toTarget(rgba) {
+      const n = this.W * this.H;
+      const src = new Uint32Array(rgba.buffer, rgba.byteOffset, n);
+      const out = new Uint32Array(n);
+      const th = this.threshold, matte = this.matte;
+      const mr = matte ? matte[0] : 0, mg = matte ? matte[1] : 0, mb = matte ? matte[2] : 0;
+      for (let i = 0; i < n; i++) {
+        const v = src[i];
+        const a = v >>> 24;
+        if (a < th) continue;
+        if (a === 255 || matte === null) { out[i] = v | 0xFF000000; continue; }
+        const ia = 255 - a;
+        const r = ((v & 255) * a + mr * ia + 127) / 255 | 0;
+        const g = (((v >>> 8) & 255) * a + mg * ia + 127) / 255 | 0;
+        const b = (((v >>> 16) & 255) * a + mb * ia + 127) / 255 | 0;
+        out[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+      }
+      return out;
+    }
+
+    /* cur/next: packed targets. next = the frame shown after this one (null if none). */
+    addFrame(cur, next, delayCs) {
+      const W = this.W, H = this.H, mask = this.mask, prev = this.prev;
+      const first = prev === null;
+      const pr = this.prevRect;
+      const clearPrev = !first && this.prevDisp === 2;
+      let x0 = W, y0 = H, x1 = -1, y1 = -1, nDraw = 0, needClear = false, bad = 0;
+      for (let y = 0; y < H; y++) {
+        const base = y * W;
+        const inRows = clearPrev && y >= pr.y && y < pr.y + pr.h;
+        const cx0 = inRows ? pr.x : W, cx1 = inRows ? pr.x + pr.w : W;
+        let rmin = -1, rmax = -1;
+        for (let x = 0; x < W; x++) {
+          const i = base + x;
+          const t = cur[i];
+          const c = (first || (x >= cx0 && x < cx1)) ? 0 : prev[i];
+          let m = 0;
+          if (t !== 0) {
+            if (t !== c) { m = 1; nDraw++; }
+            if (next !== null && next[i] === 0) { m |= 2; needClear = true; }
+          } else if (c !== 0) {
+            bad++;
+          }
+          mask[i] = m;
+          if (m !== 0) { if (rmin < 0) rmin = x; rmax = x; }
+        }
+        if (rmin >= 0) {
+          if (y < y0) y0 = y;
+          y1 = y;
+          if (rmin < x0) x0 = rmin;
+          if (rmax > x1) x1 = rmax;
+        }
+      }
+      if (bad > 0) throw new Error('internal: frame needs erasing that disposal did not provide');
+
+      let rect;
+      if (first) rect = { x: 0, y: 0, w: W, h: H };
+      else if (x1 < 0) rect = { x: 0, y: 0, w: 1, h: 1 };
+      else rect = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+      const disp = needClear ? 2 : 1;
+
+      const K = this.maxColors - 1;
+      const exact = this.exactColors(cur, rect, K);
+      let pal;
+      if (exact) {
+        const n = exact.size;
+        pal = { r: new Uint8Array(n), g: new Uint8Array(n), b: new Uint8Array(n), n };
+        exact.forEach((j, c) => { pal.r[j] = c & 255; pal.g[j] = (c >>> 8) & 255; pal.b[j] = (c >>> 16) & 255; });
+      } else {
+        pal = this.quantize(cur, rect, K);
+      }
+      const trans = pal.n;
+      this.mapPixels(cur, rect, pal, exact, trans);
+
+      let bits = 1;
+      while ((1 << bits) < pal.n + 1) bits++;
+      const tableSize = 1 << bits;
+      const s = this.sink;
+      const start = s.length;
+      s.u8(0x21); s.u8(0xF9); s.u8(4);
+      s.u8((disp << 2) | 1);
+      s.u16le(delayCs);
+      s.u8(trans);
+      s.u8(0);
+      s.u8(0x2C);
+      s.u16le(rect.x); s.u16le(rect.y); s.u16le(rect.w); s.u16le(rect.h);
+      s.u8(0x80 | (bits - 1));
+      for (let j = 0; j < tableSize; j++) {
+        if (j < pal.n) { s.u8(pal.r[j]); s.u8(pal.g[j]); s.u8(pal.b[j]); }
+        else { s.u8(0); s.u8(0); s.u8(0); }
+      }
+      lzwEncode(s, this.out, rect.w * rect.h, Math.max(2, bits), this.dict, this.used);
+
+      this.stats.push({ rect, disp, colors: pal.n, exact: !!exact, drawn: nDraw, bytes: s.length - start });
+      this.prev = cur;
+      this.prevRect = rect;
+      this.prevDisp = disp;
+    }
+
+    exactColors(cur, rect, K) {
+      const W = this.W, mask = this.mask;
+      const map = new Map();
+      let last = -1;
+      for (let y = rect.y; y < rect.y + rect.h; y++) {
+        let i = y * W + rect.x;
+        const end = i + rect.w;
+        for (; i < end; i++) {
+          if ((mask[i] & 1) === 0) continue;
+          const c = cur[i];
+          if (c === last) continue;
+          last = c;
+          if (!map.has(c)) {
+            if (map.size >= K) return null;
+            map.set(c, map.size);
+          }
+        }
+      }
+      return map;
+    }
+
+    quantize(cur, rect, K) {
+      const W = this.W, mask = this.mask;
+      const h = this.hist || (this.hist = new Histogram());
+      h.clear();
+      const hn = h.n, hr = h.r, hg = h.g, hb = h.b, hs = h.s, touched = h.touched;
+      let count = 0;
+      for (let y = rect.y; y < rect.y + rect.h; y++) {
+        let i = y * W + rect.x;
+        const end = i + rect.w;
+        for (; i < end; i++) {
+          if ((mask[i] & 1) === 0) continue;
+          const c = cur[i];
+          const r = c & 255, g = (c >>> 8) & 255, b = (c >>> 16) & 255;
+          const k = ((r >>> 2) << 12) | ((g >>> 2) << 6) | (b >>> 2);
+          if (hn[k] === 0) touched[count++] = k;
+          hn[k] += 1; hr[k] += r; hg[k] += g; hb[k] += b; hs[k] += r * r + g * g + b * b;
+        }
+      }
+      h.count = count;
+      const wu = wuPalette(h, K);
+      return polishPalette(h, wu, 3);
+    }
+
+    mapPixels(cur, rect, pal, exact, trans) {
+      const W = this.W, mask = this.mask, out = this.out;
+      const rx = rect.x, ry = rect.y, rw = rect.w, rh = rect.h;
+      if (exact) {
+        let last = -1, li = 0;
+        for (let yy = 0; yy < rh; yy++) {
+          let i = (ry + yy) * W + rx, o = yy * rw;
+          for (let xx = 0; xx < rw; xx++, i++, o++) {
+            if ((mask[i] & 1) === 0) { out[o] = trans; continue; }
+            const c = cur[i];
+            if (c !== last) { last = c; li = exact.get(c); }
+            out[o] = li;
+          }
+        }
+        return;
+      }
+      const nearest = makeNearest(pal.r, pal.g, pal.b, pal.n);
+      const cache = this.cache || (this.cache = new Int16Array(1 << 24));
+      cache.fill(-1);
+      if (!this.dither) {
+        let last = -1, li = 0;
+        for (let yy = 0; yy < rh; yy++) {
+          let i = (ry + yy) * W + rx, o = yy * rw;
+          for (let xx = 0; xx < rw; xx++, i++, o++) {
+            if ((mask[i] & 1) === 0) { out[o] = trans; continue; }
+            const c = cur[i];
+            if (c !== last) {
+              last = c;
+              const key = c & 0xFFFFFF;
+              let v = cache[key];
+              if (v < 0) { v = nearest(c & 255, (c >>> 8) & 255, (c >>> 16) & 255); cache[key] = v; }
+              li = v;
+            }
+            out[o] = li;
+          }
+        }
+        return;
+      }
+      // Floyd–Steinberg, serpentine, only across pixels this frame actually draws
+      const pr = pal.r, pg = pal.g, pb = pal.b;
+      let e0 = this.errA, e1 = this.errB;
+      const ew = (rw + 2) * 3;
+      e0.fill(0, 0, ew);
+      const S = DITHER_STRENGTH, f7 = S * 7 / 16, f3 = S * 3 / 16, f5 = S * 5 / 16, f1 = S * 1 / 16;
+      for (let yy = 0; yy < rh; yy++) {
+        e1.fill(0, 0, ew);
+        const ltr = (yy & 1) === 0;
+        const rowBase = (ry + yy) * W + rx, outBase = yy * rw;
+        const fwd = ltr ? 3 : -3;
+        for (let k = 0; k < rw; k++) {
+          const xx = ltr ? k : rw - 1 - k;
+          const i = rowBase + xx;
+          if ((mask[i] & 1) === 0) { out[outBase + xx] = trans; continue; }
+          const c = cur[i];
+          const ei = (xx + 1) * 3;
+          let r = (c & 255) + e0[ei], g = ((c >>> 8) & 255) + e0[ei + 1], b = ((c >>> 16) & 255) + e0[ei + 2];
+          r = r <= 0 ? 0 : r >= 255 ? 255 : (r + 0.5) | 0;
+          g = g <= 0 ? 0 : g >= 255 ? 255 : (g + 0.5) | 0;
+          b = b <= 0 ? 0 : b >= 255 ? 255 : (b + 0.5) | 0;
+          const key = r | (g << 8) | (b << 16);
+          let v = cache[key];
+          if (v < 0) { v = nearest(r, g, b); cache[key] = v; }
+          out[outBase + xx] = v;
+          const er = r - pr[v], eg = g - pg[v], eb = b - pb[v];
+          if (er !== 0 || eg !== 0 || eb !== 0) {
+            e0[ei + fwd] += er * f7; e0[ei + fwd + 1] += eg * f7; e0[ei + fwd + 2] += eb * f7;
+            e1[ei - fwd] += er * f3; e1[ei - fwd + 1] += eg * f3; e1[ei - fwd + 2] += eb * f3;
+            e1[ei] += er * f5; e1[ei + 1] += eg * f5; e1[ei + 2] += eb * f5;
+            e1[ei + fwd] += er * f1; e1[ei + fwd + 1] += eg * f1; e1[ei + fwd + 2] += eb * f1;
+          }
+        }
+        const t = e0; e0 = e1; e1 = t;
+      }
+    }
+
+    finish() {
+      this.sink.u8(0x3B);
+      return this.sink.finish();
+    }
+  }
+
+  async function encodeGif(job, getFrame, progress) {
+    const { W, H, N, delays, loop } = job;
+    const g = job.gif || {};
+    const enc = new GifEncoder(W, H, { loop, threshold: g.threshold, matte: g.matte, dither: g.dither, colors: g.colors });
+    const t0 = enc.toTarget(await getFrame(0));
+    let cur = t0;
+    for (let k = 0; k < N; k++) {
+      progress(k, N);
+      let next = null;
+      if (k + 1 < N) next = enc.toTarget(await getFrame(k + 1));
+      else if (loop === 0 && N > 1) next = t0;
+      enc.addFrame(cur, next, delays[k]);
+      cur = next;
+    }
+    progress(N, N);
+    return { parts: enc.finish(), stats: enc.stats };
+  }
+
+  /* ----------------------------------------------------------------- APNG */
+
+  function pngChunk(sink, type, data) {
+    sink.u32be(data.length);
+    const t = new Uint8Array(4);
+    for (let i = 0; i < 4; i++) t[i] = type.charCodeAt(i);
+    sink.bytes(t);
+    if (data.length > 65536) sink.adopt(data); else sink.bytes(data);
+    sink.u32be(crc32(data, crc32(t, 0)));
+  }
+
+  function diffBox(a, b, W, H) {
+    let x0 = W, y0 = -1, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) {
+      const base = y * W;
+      let l = -1;
+      for (let x = 0; x < W; x++) if (a[base + x] !== b[base + x]) { l = x; break; }
+      if (l < 0) continue;
+      let r = l;
+      for (let x = W - 1; x > l; x--) if (a[base + x] !== b[base + x]) { r = x; break; }
+      if (y0 < 0) y0 = y;
+      y1 = y;
+      if (l < x0) x0 = l;
+      if (r > x1) x1 = r;
+    }
+    return y0 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  }
+
+  /* PNG scanline filtering with the usual minimum-sum-of-absolutes choice per row. */
+  function filterRect(rgba, W, rect) {
+    const rw = rect.w, rh = rect.h, rowBytes = rw * 4, stride = rowBytes + 1;
+    const out = new Uint8Array(rh * stride);
+    const zero = new Uint8Array(rowBytes);
+    let prevRow = zero;
+    for (let y = 0; y < rh; y++) {
+      const off = ((rect.y + y) * W + rect.x) * 4;
+      const row = rgba.subarray(off, off + rowBytes);
+      let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+      for (let i = 0; i < rowBytes; i++) {
+        const x = row[i], a = i >= 4 ? row[i - 4] : 0, b = prevRow[i], c = i >= 4 ? prevRow[i - 4] : 0;
+        s0 += x < 128 ? x : 256 - x;
+        let v = (x - a) & 255; s1 += v < 128 ? v : 256 - v;
+        v = (x - b) & 255; s2 += v < 128 ? v : 256 - v;
+        v = (x - ((a + b) >> 1)) & 255; s3 += v < 128 ? v : 256 - v;
+        const p = a + b - c;
+        const pa = p > a ? p - a : a - p, pb = p > b ? p - b : b - p, pc = p > c ? p - c : c - p;
+        const pred = (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+        v = (x - pred) & 255; s4 += v < 128 ? v : 256 - v;
+      }
+      let ft = 0, best = s0;
+      if (s1 < best) { best = s1; ft = 1; }
+      if (s2 < best) { best = s2; ft = 2; }
+      if (s3 < best) { best = s3; ft = 3; }
+      if (s4 < best) { best = s4; ft = 4; }
+      const o = y * stride;
+      out[o] = ft;
+      const d = o + 1;
+      if (ft === 0) out.set(row, d);
+      else if (ft === 1) for (let i = 0; i < rowBytes; i++) out[d + i] = row[i] - (i >= 4 ? row[i - 4] : 0);
+      else if (ft === 2) for (let i = 0; i < rowBytes; i++) out[d + i] = row[i] - prevRow[i];
+      else if (ft === 3) for (let i = 0; i < rowBytes; i++) out[d + i] = row[i] - (((i >= 4 ? row[i - 4] : 0) + prevRow[i]) >> 1);
+      else {
+        for (let i = 0; i < rowBytes; i++) {
+          const a = i >= 4 ? row[i - 4] : 0, b = prevRow[i], c = i >= 4 ? prevRow[i - 4] : 0;
+          const p = a + b - c;
+          const pa = p > a ? p - a : a - p, pb = p > b ? p - b : b - p, pc = p > c ? p - c : c - p;
+          out[d + i] = row[i] - ((pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c));
+        }
+      }
+      prevRow = row;
+    }
+    return out;
+  }
+
+  async function zlibDeflate(u8) {
+    const cs = new CompressionStream('deflate');
+    const writer = cs.writable.getWriter();
+    const done = new Response(cs.readable).arrayBuffer();
+    await writer.write(u8);
+    await writer.close();
+    return new Uint8Array(await done);
+  }
+
+  const PNG_CHUNK_MAX = 1 << 20;
+
+  async function encodeApng(job, getFrame, progress) {
+    const { W, H, N, delays, loop } = job; // delays in ms
+    const s = new Sink(1 << 16);
+    s.bytes(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]));
+    const ihdr = new Uint8Array(13), iv = new DataView(ihdr.buffer);
+    iv.setUint32(0, W); iv.setUint32(4, H);
+    ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+    pngChunk(s, 'IHDR', ihdr);
+    const actl = new Uint8Array(8), av = new DataView(actl.buffer);
+    av.setUint32(0, N); av.setUint32(4, loop === 0 ? 0 : 1);
+    pngChunk(s, 'acTL', actl);
+    let seq = 0, prev = null;
+    const stats = [];
+    for (let k = 0; k < N; k++) {
+      progress(k, N);
+      const rgba = await getFrame(k);
+      const cur = new Uint32Array(rgba.buffer, rgba.byteOffset, W * H);
+      let rect, blend = 0, raw;
+      if (prev === null) rect = { x: 0, y: 0, w: W, h: H };
+      else rect = diffBox(prev, cur, W, H);
+      if (rect === null) {
+        rect = { x: 0, y: 0, w: 1, h: 1 };
+        blend = 1; // OVER a fully transparent pixel: nothing changes
+        raw = new Uint8Array(5);
+      } else {
+        raw = filterRect(rgba, W, rect);
+      }
+      const fc = new Uint8Array(26), fv = new DataView(fc.buffer);
+      fv.setUint32(0, seq++);
+      fv.setUint32(4, rect.w); fv.setUint32(8, rect.h);
+      fv.setUint32(12, rect.x); fv.setUint32(16, rect.y);
+      fv.setUint16(20, delays[k]); fv.setUint16(22, 1000);
+      fc[24] = 0; // dispose: none
+      fc[25] = blend; // 0 = source (exact replace), 1 = over
+      pngChunk(s, 'fcTL', fc);
+      const z = await zlibDeflate(raw);
+      const start = s.length;
+      for (let off = 0; off < z.length; off += PNG_CHUNK_MAX) {
+        const part = z.subarray(off, Math.min(z.length, off + PNG_CHUNK_MAX));
+        if (k === 0) pngChunk(s, 'IDAT', part);
+        else {
+          const d = new Uint8Array(4 + part.length);
+          new DataView(d.buffer).setUint32(0, seq++);
+          d.set(part, 4);
+          pngChunk(s, 'fdAT', d);
+        }
+      }
+      stats.push({ rect, bytes: s.length - start });
+      prev = cur;
+    }
+    pngChunk(s, 'IEND', new Uint8Array(0));
+    progress(N, N);
+    return { parts: s.finish(), stats };
+  }
+
+  /* ----------------------------------------------------------------- WebP */
+
+  /* Keep the image-data chunks (ALPH, VP8, VP8L) of a still WebP made by canvas.toBlob. */
+  function webpFrameChunks(u8) {
+    const id = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
+    if (u8.length < 20 || id(0) !== 'RIFF' || id(8) !== 'WEBP') throw new Error('not a WebP image');
+    const parts = [];
+    let off = 12, size = 0;
+    while (off + 8 <= u8.length) {
+      const type = id(off);
+      const len = (u8[off + 4] | (u8[off + 5] << 8) | (u8[off + 6] << 16) | (u8[off + 7] << 24)) >>> 0;
+      const full = 8 + len + (len & 1);
+      if (type === 'ALPH' || type === 'VP8 ' || type === 'VP8L') {
+        const c = new Uint8Array(full);
+        c.set(u8.subarray(off, Math.min(u8.length, off + full)));
+        parts.push(c);
+        size += full;
+      }
+      off += full;
+    }
+    if (!parts.length) throw new Error('WebP frame has no image data');
+    return { parts, size };
+  }
+
+  function muxWebp(frames, W, H, delays, loop) {
+    const s = new Sink(1 << 16);
+    let body = 4 + (8 + 10) + (8 + 6);
+    for (const f of frames) body += 8 + 16 + f.size;
+    s.ascii('RIFF'); s.u32le(body); s.ascii('WEBP');
+    s.ascii('VP8X'); s.u32le(10);
+    s.u8(0x12); s.u8(0); s.u8(0); s.u8(0); // alpha + animation
+    s.u24le(W - 1); s.u24le(H - 1);
+    s.ascii('ANIM'); s.u32le(6);
+    s.u32le(0);                    // background: transparent
+    s.u16le(loop === 0 ? 0 : 1);   // 0 = forever
+    frames.forEach((f, k) => {
+      s.ascii('ANMF'); s.u32le(16 + f.size);
+      s.u24le(0); s.u24le(0);
+      s.u24le(W - 1); s.u24le(H - 1);
+      s.u24le(delays[k]);
+      s.u8(0x02); // do not blend, no disposal: each frame replaces the canvas
+      for (const p of f.parts) s.bytes(p);
+    });
+    return s.finish();
+  }
+
+  /* --------------------------------------------------------------- driver */
+
+  async function run(job, getFrame, progress) {
+    if (job.format === 'gif') return encodeGif(job, getFrame, progress);
+    if (job.format === 'apng') return encodeApng(job, getFrame, progress);
+    throw new Error('unknown format ' + job.format);
+  }
+
+  const MIME = { gif: 'image/gif', apng: 'image/png', webp: 'image/webp' };
+
+  function installWorker() {
+    const waiting = new Map();
+    const getFrame = (i) => new Promise((resolve) => {
+      waiting.set(i, resolve);
+      self.postMessage({ type: 'need', index: i });
+    });
+    self.onmessage = async (ev) => {
+      const m = ev.data;
+      if (m.type === 'frame') {
+        const r = waiting.get(m.index);
+        waiting.delete(m.index);
+        if (r) r(new Uint8ClampedArray(m.buffer));
+      } else if (m.type === 'start') {
+        try {
+          const res = await run(m.job, getFrame, (done, total) => self.postMessage({ type: 'progress', done, total }));
+          const blob = new Blob(res.parts, { type: MIME[m.job.format] });
+          self.postMessage({ type: 'done', blob, stats: res.stats });
+        } catch (e) {
+          self.postMessage({ type: 'error', name: (e && e.name) || 'Error', message: String((e && e.message) || e) });
+        }
+      }
+    };
+  }
+
+  return {
+    Sink, crc32, splitDuration, makeNearest, GifEncoder, encodeGif, encodeApng,
+    filterRect, diffBox, zlibDeflate, webpFrameChunks, muxWebp, run, installWorker, MIME
+  };
+})();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = UMCore;
+</script>
+<script>
+(() => {
+  'use strict';
+
+  const $ = (s) => document.querySelector(s);
+  const collator = new Intl.Collator('ko', { numeric: true, sensitivity: 'base' });
+  const PV_MAX = 900;                 // long side of the preview copies, px
+  const LS_KEY = 'umjjal.settings.v1';
+  const FORMAT_NAME = { gif: 'GIF', apng: 'APNG', webp: 'WebP' };
+  const EXT = { gif: 'gif', apng: 'png', webp: 'webp' };
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let uid = 0;
+
+  const el = {
+    desk: $('.desk'), stageWrap: $('#stageWrap'), stage: $('#stage'), pv: $('#pv'), tag: $('#stageTag'), empty: $('#stageEmpty'),
+    playBtn: $('#playBtn'), prevBtn: $('#prevBtn'), nextBtn: $('#nextBtn'), fNow: $('#fNow'), fAll: $('#fAll'),
+    xsheet: $('#xsheet'), xnote: $('#xnote'), pvnote: $('#pvnote'),
+    strip: $('#strip'), drop: $('#drop'), file: $('#fileInput'), frameStatus: $('#frameStatus'),
+    sortBtn: $('#sortBtn'), revBtn: $('#revBtn'), clearBtn: $('#clearBtn'),
+    dur: $('#dur'), durHelp: $('#durHelp'), scaleHelp: $('#scaleHelp'),
+    gifOpts: $('#gifOpts'), webpOpts: $('#webpOpts'), webpDesc: $('#webpDesc'),
+    th: $('#th'), thOut: $('#thOut'), matteColor: $('#matteColor'), dither: $('#dither'), wq: $('#wq'), wqOut: $('#wqOut'),
+    makeBtn: $('#makeBtn'), cancelBtn: $('#cancelBtn'), progress: $('#progress'), bar: $('#bar'), progText: $('#progText'),
+    error: $('#error'), result: $('#result'), outStage: $('#outStage'), outImg: $('#outImg'), facts: $('#facts'),
+    stale: $('#stale'), saveBtn: $('#saveBtn'), saveNote: $('#saveNote'), sizeNote: $('#sizeNote'), veil: $('#dropveil'),
+    specFrames: $('#specFrames'), specSize: $('#specSize'), specTime: $('#specTime'), specFmt: $('#specFmt'),
+  };
+  const pvCtx = el.pv.getContext('2d');
+
+  /* ------------------------------------------------------------ settings */
+
+  const DEFAULTS = {
+    duration: 1, loop: 0, format: 'gif', scale: 1,
+    threshold: 128, matte: 'none', matteColor: '#ffffff', colors: 256, dither: false,
+    webpQuality: 90, bg: 'check',
+  };
+  const settings = Object.assign({}, DEFAULTS, sanitize(loadSettings()));
+
+  function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function saveSettings() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(settings)); } catch (e) { /* storage unavailable */ }
+  }
+  function sanitize(v) {
+    const out = {};
+    if (!v || typeof v !== 'object') return out;
+    const num = (x, lo, hi) => typeof x === 'number' && isFinite(x) && x >= lo && x <= hi;
+    if (num(v.duration, 0.1, 60)) out.duration = v.duration;
+    if (v.loop === 0 || v.loop === 1) out.loop = v.loop;
+    if (['gif', 'apng', 'webp'].includes(v.format)) out.format = v.format;
+    if ([1, 0.75, 0.5, 0.25].includes(v.scale)) out.scale = v.scale;
+    if (num(v.threshold, 1, 254)) out.threshold = Math.round(v.threshold);
+    if (['none', 'white', 'black', 'custom'].includes(v.matte)) out.matte = v.matte;
+    if (typeof v.matteColor === 'string' && /^#[0-9a-f]{6}$/i.test(v.matteColor)) out.matteColor = v.matteColor;
+    if ([256, 128, 64, 32].includes(v.colors)) out.colors = v.colors;
+    if (typeof v.dither === 'boolean') out.dither = v.dither;
+    if (num(v.webpQuality, 50, 100)) out.webpQuality = Math.round(v.webpQuality);
+    if (['check', 'white', 'black'].includes(v.bg)) out.bg = v.bg;
+    return out;
+  }
+
+  const caps = { apng: typeof CompressionStream === 'function', webp: false };
+
+  /* --------------------------------------------------------------- state */
+
+  const state = {
+    frames: [],                       // { id, file, name, w, h, small, thumb }
+    example: false,
+    base: { w: 0, h: 0 },
+    pv: { w: 0, h: 0, scale: 1, byId: new Map(), gifById: new Map() },
+    play: { on: !reduceMotion, t0: 0, idx: 0, shown: -1, dirty: true },
+    cum: [0],
+    busy: false,
+    loading: false,
+    result: null,
+  };
+  let current = null;                 // running job: { cancelled, cancel() }
+
+  /* -------------------------------------------------------------- helpers */
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  /* Korean particle after a number read aloud: 2·4·5·9 end in a vowel (이, 사, 오, 구) */
+  const josa = (n, afterConsonant, afterVowel) => ([2, 4, 5, 9].includes(Math.abs(n) % 10) ? afterVowel : afterConsonant);
+  const fmtSec = (s) => (Math.round(s * 1000) / 1000).toFixed(s < 10 ? 2 : 1);
+  const nextFrame = () => new Promise((r) => setTimeout(r, 0));
+  function fmtBytes(b) {
+    if (b < 1024 * 1024) return Math.max(1, Math.round(b / 1024)) + ' KB';
+    return (b / 1048576).toFixed(b < 10 * 1048576 ? 2 : 1) + ' MB';
+  }
+  function hexToRgb(h) {
+    const n = parseInt(h.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function matteRGB() {
+    if (settings.matte === 'white') return [255, 255, 255];
+    if (settings.matte === 'black') return [0, 0, 0];
+    if (settings.matte === 'custom') return hexToRgb(settings.matteColor);
+    return null;
+  }
+
+  /* GIF counts time in 1/100 s, APNG and WebP in 1/1000 s. Steps are spread so the total is exact. */
+  function timing(format, seconds, n) {
+    if (n <= 0) return { unit: format === 'gif' ? 10 : 1, steps: [], totalMs: 0, clamped: false };
+    if (format === 'gif') {
+      const want = Math.round(seconds * 100), total = Math.max(want, 2 * n);
+      return { unit: 10, steps: UMCore.splitDuration(total, n), totalMs: total * 10, clamped: total !== want };
+    }
+    const want = Math.round(seconds * 1000), total = Math.max(want, 20 * n);
+    return { unit: 1, steps: UMCore.splitDuration(total, n), totalMs: total, clamped: total !== want };
+  }
+  const currentTiming = () => timing(settings.format, settings.duration, state.frames.length);
+
+  function outSize() {
+    const { w, h } = state.base;
+    return { W: Math.max(1, Math.round(w * settings.scale)), H: Math.max(1, Math.round(h * settings.scale)) };
+  }
+
+  /* ------------------------------------------------------------ loading */
+
+  async function loadFrame(file) {
+    const bmp = await createImageBitmap(file);
+    const w = bmp.width, h = bmp.height;
+    const s = Math.min(1, PV_MAX / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * s));
+    c.height = Math.max(1, Math.round(h * s));
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    if (bmp.close) bmp.close();
+    return { id: ++uid, file, name: file.name, w, h, small: c, thumb: null };
+  }
+
+  const isWide = (w, h) => w > h * 1.15;
+  const isImage = (f) => /^image\//.test(f.type) || /\.(png|apng|webp|gif|jpe?g)$/i.test(f.name);
+  const sameFile = (a, b) => a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+
+  async function addFiles(list, opts = {}) {
+    if (state.loading) return;
+    const all = Array.from(list || []);
+    const files = all.filter(isImage).sort((a, b) => collator.compare(a.name, b.name));
+    const notImages = all.length - files.length;
+    if (!files.length) {
+      setStatus(notImages ? '그림 파일이 아니라서 넣지 못했어요. PNG 파일을 넣어 주세요.' : '', true);
+      return;
+    }
+    if (state.example && !opts.example) { state.frames = []; state.example = false; }
+    const fresh = files.filter((f) => !state.frames.some((x) => sameFile(x.file, f)));
+    const dupes = files.length - fresh.length;
+    state.loading = true;
+    updateButtons();
+    const added = [], failed = [];
+    for (let i = 0; i < fresh.length; i++) {
+      if (!opts.example) setStatus(`불러오는 중… ${i + 1} / ${fresh.length}`);
+      try { added.push(await loadFrame(fresh[i])); } catch (e) { failed.push(fresh[i].name); }
+    }
+    state.loading = false;
+    state.frames.push(...added);
+    if (opts.example) state.example = true;
+    framesChanged();
+    if (opts.example) {
+      setStatus('지금은 예시 프레임 15장(공 튀기기)이 들어 있어요. 내 PNG를 넣으면 바뀌어요.');
+      return;
+    }
+    const notes = [];
+    if (added.length) notes.push(`${added.length}장을 넣었어요.`);
+    if (dupes) notes.push(`이미 있는 파일 ${dupes}장은 건너뛰었어요.`);
+    if (failed.length) notes.push(`읽지 못한 파일: ${failed.join(', ')}`);
+    if (notImages) notes.push(`그림이 아닌 파일 ${notImages}개는 뺐어요.`);
+    const odd = oddFrames();
+    if (odd.length) notes.push(`크기가 다른 프레임이 ${odd.length}장 있어요(주황 테두리). 왼쪽 위에 맞춰 넣어요.`);
+    setStatus(notes.join(' '), failed.length > 0 || odd.length > 0);
+  }
+
+  function setStatus(text, warn) {
+    el.frameStatus.textContent = text;
+    el.frameStatus.classList.toggle('warn', !!warn);
+  }
+
+  function oddFrames() {
+    return state.frames.filter((f) => f.w !== state.base.w || f.h !== state.base.h);
+  }
+
+  /* the most common frame size becomes the canvas size */
+  function recomputeBase() {
+    const counts = new Map();
+    let best = null, bestN = 0;
+    for (const f of state.frames) {
+      const k = f.w + 'x' + f.h;
+      const n = (counts.get(k) || 0) + 1;
+      counts.set(k, n);
+      if (n > bestN) { bestN = n; best = f; }
+    }
+    const nb = best ? { w: best.w, h: best.h } : { w: 0, h: 0 };
+    if (nb.w !== state.base.w || nb.h !== state.base.h) {
+      state.base = nb;
+      state.pv.byId.clear();
+      state.pv.gifById.clear();
+      if (nb.w) {
+        const s = Math.min(1, PV_MAX / Math.max(nb.w, nb.h));
+        state.pv.scale = s;
+        state.pv.w = Math.max(1, Math.round(nb.w * s));
+        state.pv.h = Math.max(1, Math.round(nb.h * s));
+        el.pv.width = state.pv.w;
+        el.pv.height = state.pv.h;
+      }
+    }
+  }
+
+  function framesChanged() {
+    recomputeBase();
+    el.desk.classList.toggle('wide', isWide(state.base.w, state.base.h));
+    const live = new Set(state.frames.map((f) => f.id));
+    for (const id of state.pv.byId.keys()) if (!live.has(id)) { state.pv.byId.delete(id); state.pv.gifById.delete(id); }
+    if (state.play.idx >= state.frames.length) state.play.idx = 0;
+    renderStrip();
+    timingChanged();
+    fitStages();
+    updateSummary();
+    updateButtons();
+    markStale();
+    el.tag.hidden = !state.example;
+    el.empty.hidden = state.frames.length > 0;
+    if (!state.frames.length) pvCtx.clearRect(0, 0, el.pv.width, el.pv.height);
+  }
+
+  /* ------------------------------------------------------------ preview */
+
+  const composeCanvas = document.createElement('canvas');
+  const composeCtx = composeCanvas.getContext('2d', { willReadFrequently: true });
+
+  function previewImage(f) {
+    let img = state.pv.byId.get(f.id);
+    if (!img) {
+      const { w, h, scale } = state.pv;
+      if (composeCanvas.width !== w || composeCanvas.height !== h) { composeCanvas.width = w; composeCanvas.height = h; }
+      composeCtx.clearRect(0, 0, w, h);
+      composeCtx.imageSmoothingEnabled = true;
+      composeCtx.imageSmoothingQuality = 'high';
+      composeCtx.drawImage(f.small, 0, 0, Math.round(f.w * scale), Math.round(f.h * scale));
+      img = composeCtx.getImageData(0, 0, w, h);
+      state.pv.byId.set(f.id, img);
+    }
+    if (settings.format !== 'gif') return img;
+    const key = settings.threshold + '|' + (matteRGB() || 'none');
+    let g = state.pv.gifById.get(f.id);
+    if (!g || g.key !== key) { g = { key, img: gifLook(img) }; state.pv.gifById.set(f.id, g); }
+    return g.img;
+  }
+
+  /* What GIF transparency will do: each pixel becomes fully clear or fully solid. */
+  function gifLook(img) {
+    const src = img.data, out = new ImageData(img.width, img.height), d = out.data;
+    const th = settings.threshold, m = matteRGB();
+    for (let i = 0; i < src.length; i += 4) {
+      const a = src[i + 3];
+      if (a < th) continue;
+      if (a === 255 || !m) { d[i] = src[i]; d[i + 1] = src[i + 1]; d[i + 2] = src[i + 2]; }
+      else {
+        const ia = 255 - a;
+        d[i] = (src[i] * a + m[0] * ia) / 255;
+        d[i + 1] = (src[i + 1] * a + m[1] * ia) / 255;
+        d[i + 2] = (src[i + 2] * a + m[2] * ia) / 255;
+      }
+      d[i + 3] = 255;
+    }
+    return out;
+  }
+
+  let lastOn = null;
+  function draw(i) {
+    const f = state.frames[i];
+    state.play.shown = i;
+    state.play.dirty = false;
+    if (!f) return;
+    pvCtx.putImageData(previewImage(f), 0, 0);
+    el.fNow.textContent = pad(i + 1);
+    const cell = el.xsheet.children[i];
+    if (lastOn && lastOn !== cell) lastOn.classList.remove('on');
+    if (cell) { cell.classList.add('on'); lastOn = cell; }
+  }
+
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const n = state.frames.length;
+    if (!n) return;
+    if (state.play.on) {
+      const total = state.cum[n] || 1;
+      const t = ((now - state.play.t0) % total + total) % total;
+      let i = 0;
+      while (i < n - 1 && t >= state.cum[i + 1]) i++;
+      state.play.idx = i;
+    }
+    if (state.play.idx >= n) state.play.idx = 0;
+    if (state.play.idx !== state.play.shown || state.play.dirty) draw(state.play.idx);
+  }
+
+  function setPlaying(on) {
+    state.play.on = on;
+    if (on) state.play.t0 = performance.now() - (state.cum[state.play.idx] || 0);
+    el.playBtn.dataset.state = on ? 'playing' : 'paused';
+    el.playBtn.setAttribute('aria-label', on ? '일시정지' : '재생');
+  }
+  function step(d) {
+    const n = state.frames.length;
+    if (!n) return;
+    setPlaying(false);
+    state.play.idx = (state.play.idx + d + n) % n;
+    state.play.dirty = true;
+  }
+
+  function timingChanged() {
+    const tm = currentTiming();
+    const n = state.frames.length;
+    state.cum = [0];
+    tm.steps.forEach((s, i) => state.cum.push(state.cum[i] + s * tm.unit));
+    if (state.play.on) state.play.t0 = performance.now() - (state.cum[state.play.idx] || 0);
+    // timing sheet
+    el.xsheet.textContent = '';
+    lastOn = null;
+    const frag = document.createDocumentFragment();
+    tm.steps.forEach((s, i) => {
+      const c = document.createElement('button');
+      c.type = 'button';
+      c.className = 'c';
+      c.style.flexGrow = String(s);
+      c.dataset.i = String(i);
+      c.setAttribute('aria-label', `${i + 1}번 프레임, ${fmtSec((s * tm.unit) / 1000)}초`);
+      c.innerHTML = `<span class="n">${i + 1}</span><span class="d">${s}</span>`;
+      frag.appendChild(c);
+    });
+    el.xsheet.appendChild(frag);
+    requestAnimationFrame(markTinyCells);
+    el.xsheet.hidden = n === 0;
+    // explanation under the sheet
+    if (!n) { el.xnote.textContent = ''; }
+    else {
+      const uniq = [...new Set(tm.steps)].sort((a, b) => b - a);
+      const unitText = settings.format === 'gif' ? '1/100초' : '1/1000초';
+      const total = fmtSec(tm.totalMs / 1000);
+      let t;
+      if (uniq.length === 1) t = `칸 숫자는 장마다 보이는 시간(단위 ${unitText})이에요. 장마다 똑같이 <b>${uniq[0]}</b>씩, 합계가 정확히 <b>${total}초</b>예요.`;
+      else t = `칸 숫자는 장마다 보이는 시간(단위 ${unitText})이에요. ${n}장으로 똑같이 나눌 수 없어서 <b>${uniq[0]}</b>${josa(uniq[0], '과', '와')} <b>${uniq[1]}</b>${josa(uniq[1], '을', '를')} 섞어 합계를 정확히 <b>${total}초</b>로 맞췄어요.`;
+      if (tm.clamped) t += ' 너무 짧으면 브라우저가 느리게 재생해서 장당 0.02초까지만 줄였어요.';
+      el.xnote.innerHTML = t;
+    }
+    el.fAll.textContent = pad(n);
+    state.play.dirty = true;
+    updateDurHelp(tm);
+    updateSummary();
+  }
+
+  function markTinyCells() {
+    for (const c of el.xsheet.children) c.classList.toggle('tiny', c.getBoundingClientRect().width < 15);
+  }
+
+  function updateDurHelp(tm) {
+    const n = state.frames.length;
+    if (!n) { el.durHelp.textContent = '프레임을 넣으면 장당 시간이 계산돼요.'; el.durHelp.classList.remove('warn'); return; }
+    const per = tm.totalMs / n / 1000;
+    const fps = n / (tm.totalMs / 1000);
+    const fpsText = Math.abs(fps - Math.round(fps)) < 0.01 ? String(Math.round(fps)) : fps.toFixed(1);
+    el.durHelp.textContent = `${n}장 → 장당 약 ${per.toFixed(3)}초, 초당 ${fpsText}장`;
+    el.durHelp.classList.toggle('warn', tm.clamped);
+    if (tm.clamped) el.durHelp.textContent += ` · 장당 0.02초보다 짧게는 못 해서 전체 ${fmtSec(tm.totalMs / 1000)}초가 돼요`;
+  }
+
+  /* ---------------------------------------------------------- frame strip */
+
+  function thumbFor(f) {
+    if (f.thumb) return f.thumb;
+    const cssH = 92, maxW = 150;
+    let h = cssH, w = (cssH * f.w) / f.h;
+    if (w > maxW) { w = maxW; h = (maxW * f.h) / f.w; }
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * 2));
+    c.height = Math.max(1, Math.round(h * 2));
+    c.style.width = Math.round(w) + 'px';
+    c.style.height = Math.round(h) + 'px';
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(f.small, 0, 0, c.width, c.height);
+    f.thumb = c;
+    return c;
+  }
+
+  function renderStrip() {
+    const focusedId = document.activeElement && document.activeElement.closest && document.activeElement.closest('.cell')
+      ? Number(document.activeElement.closest('.cell').dataset.id) : null;
+    el.strip.textContent = '';
+    const frag = document.createDocumentFragment();
+    state.frames.forEach((f, i) => {
+      const li = document.createElement('li');
+      li.className = 'cell';
+      li.draggable = true;
+      li.tabIndex = 0;
+      li.dataset.id = String(f.id);
+      const odd = f.w !== state.base.w || f.h !== state.base.h;
+      if (odd) li.classList.add('odd');
+      li.title = `${f.name} · ${f.w}×${f.h}${odd ? ' (크기가 달라요)' : ''}`;
+      li.setAttribute('aria-label', `${i + 1}번 프레임 ${f.name}`);
+      li.innerHTML = `<span class="no">${pad(i + 1)}</span><span class="th"></span><span class="nm">${esc(f.name)}</span>` +
+        `<button type="button" class="rm" aria-label="${i + 1}번 프레임 빼기">×</button>`;
+      const th = thumbFor(f);
+      li.querySelector('.th').appendChild(th);
+      li.style.width = Math.max(58, parseFloat(th.style.width) + 12) + 'px';
+      frag.appendChild(li);
+    });
+    el.strip.appendChild(frag);
+    if (focusedId !== null) {
+      const again = el.strip.querySelector(`.cell[data-id="${focusedId}"]`);
+      if (again) again.focus();
+    }
+  }
+
+  function removeFrame(id) {
+    const i = state.frames.findIndex((f) => f.id === id);
+    if (i < 0) return;
+    state.frames.splice(i, 1);
+    if (state.example) state.example = state.frames.length > 0;
+    framesChanged();
+    const next = el.strip.children[Math.min(i, el.strip.children.length - 1)];
+    if (next) next.focus();
+  }
+
+  function moveFrame(id, toIndex) {
+    const from = state.frames.findIndex((f) => f.id === id);
+    if (from < 0) return;
+    const [f] = state.frames.splice(from, 1);
+    state.frames.splice(Math.max(0, Math.min(state.frames.length, toIndex)), 0, f);
+    framesChanged();
+  }
+
+  let dragId = null;
+  function clearMarks() { for (const c of el.strip.children) c.classList.remove('before', 'after'); }
+  function dropSlot(e) {
+    const li = e.target.closest && e.target.closest('.cell');
+    if (!li) return null;
+    const r = li.getBoundingClientRect();
+    return { li, after: e.clientX > r.left + r.width / 2 };
+  }
+
+  el.strip.addEventListener('dragstart', (e) => {
+    const li = e.target.closest('.cell');
+    if (!li) return;
+    dragId = Number(li.dataset.id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', li.dataset.id);
+    li.classList.add('dragging');
+  });
+  el.strip.addEventListener('dragover', (e) => {
+    if (dragId === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clearMarks();
+    const s = dropSlot(e);
+    if (s) s.li.classList.add(s.after ? 'after' : 'before');
+  });
+  el.strip.addEventListener('drop', (e) => {
+    if (dragId === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const s = dropSlot(e);
+    if (s) {
+      const targetId = Number(s.li.dataset.id);
+      if (targetId !== dragId) {
+        const ids = state.frames.map((f) => f.id).filter((id) => id !== dragId);
+        let to = ids.indexOf(targetId) + (s.after ? 1 : 0);
+        moveFrame(dragId, to);
+      }
+    }
+    clearMarks();
+    dragId = null;
+  });
+  el.strip.addEventListener('dragend', () => {
+    clearMarks();
+    for (const c of el.strip.children) c.classList.remove('dragging');
+    dragId = null;
+  });
+  el.strip.addEventListener('click', (e) => {
+    const rm = e.target.closest('.rm');
+    if (rm) { removeFrame(Number(rm.closest('.cell').dataset.id)); return; }
+    const li = e.target.closest('.cell');
+    if (li) {
+      const i = state.frames.findIndex((f) => f.id === Number(li.dataset.id));
+      if (i >= 0) { setPlaying(false); state.play.idx = i; state.play.dirty = true; }
+    }
+  });
+  el.strip.addEventListener('keydown', (e) => {
+    const li = e.target.closest('.cell');
+    if (!li || e.target.closest('.rm')) return;
+    const id = Number(li.dataset.id);
+    const i = state.frames.findIndex((f) => f.id === id);
+    if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault();
+      moveFrame(id, i + (e.key === 'ArrowLeft' ? -1 : 1));
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      removeFrame(id);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const sib = e.key === 'ArrowLeft' ? li.previousElementSibling : li.nextElementSibling;
+      if (sib) sib.focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setPlaying(false); state.play.idx = i; state.play.dirty = true;
+    }
+  });
+
+  /* files dropped anywhere on the page */
+  let dragDepth = 0;
+  const hasFiles = (e) => !!e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+  window.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e) || dragId !== null) return;
+    dragDepth++;
+    el.veil.hidden = false;
+    el.drop.classList.add('over');
+  });
+  window.addEventListener('dragleave', (e) => {
+    if (!hasFiles(e) || dragId !== null) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) { el.veil.hidden = true; el.drop.classList.remove('over'); }
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!hasFiles(e) || dragId !== null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('drop', (e) => {
+    if (!hasFiles(e) || dragId !== null) return;
+    e.preventDefault();
+    dragDepth = 0;
+    el.veil.hidden = true;
+    el.drop.classList.remove('over');
+    addFiles(e.dataTransfer.files);
+  });
+  el.file.addEventListener('change', () => {
+    const files = el.file.files;
+    addFiles(files).finally(() => { el.file.value = ''; });
+  });
+
+  el.sortBtn.addEventListener('click', () => {
+    state.frames.sort((a, b) => collator.compare(a.name, b.name));
+    framesChanged();
+  });
+  el.revBtn.addEventListener('click', () => { state.frames.reverse(); framesChanged(); });
+  el.clearBtn.addEventListener('click', () => {
+    state.frames = [];
+    state.example = false;
+    framesChanged();
+    setStatus('모두 뺐어요. 새 PNG를 넣어 주세요.');
+  });
+
+  /* ----------------------------------------------------- settings wiring */
+
+  function applySettingsToUI() {
+    el.dur.value = String(settings.duration);
+    $('#loop' + settings.loop).checked = true;
+    ({ gif: $('#fmtGif'), apng: $('#fmtApng'), webp: $('#fmtWebp') })[settings.format].checked = true;
+    ({ 1: $('#sc100'), 0.75: $('#sc75'), 0.5: $('#sc50'), 0.25: $('#sc25') })[settings.scale].checked = true;
+    el.th.value = String(settings.threshold);
+    ({ none: $('#mtNone'), white: $('#mtWhite'), black: $('#mtBlack'), custom: $('#mtCustom') })[settings.matte].checked = true;
+    el.matteColor.value = settings.matteColor;
+    $('#c' + settings.colors).checked = true;
+    el.dither.checked = settings.dither;
+    el.wq.value = String(settings.webpQuality);
+    setBg(settings.bg);
+    reflectSettings();
+  }
+
+  function reflectSettings() {
+    el.gifOpts.hidden = settings.format !== 'gif';
+    el.webpOpts.hidden = settings.format !== 'webp';
+    el.thOut.textContent = `불투명도 ${Math.round((settings.threshold / 255) * 100)}% 미만은 투명`;
+    el.matteColor.disabled = settings.matte !== 'custom';
+    el.wqOut.textContent = String(settings.webpQuality);
+    el.makeBtn.textContent = `${FORMAT_NAME[settings.format]} 만들기`;
+    el.pvnote.textContent = settings.format === 'gif' && state.frames.length
+      ? 'GIF 투명 처리를 적용한 모습이에요. 색 줄임과 디더링은 만든 결과에서 확인하세요.'
+      : '';
+    updateScaleHelp();
+  }
+
+  function updateScaleHelp() {
+    if (!state.base.w) { el.scaleHelp.textContent = '프레임을 넣으면 크기가 표시돼요.'; return; }
+    const { W, H } = outSize();
+    el.scaleHelp.textContent = `${W} × ${H} px` + (settings.scale < 1 ? ` (원본 ${state.base.w} × ${state.base.h})` : '');
+  }
+
+  function updateSummary() {
+    const n = state.frames.length;
+    el.specFrames.textContent = n ? `${n}장` : '–';
+    if (state.base.w) { const { W, H } = outSize(); el.specSize.textContent = `${W}×${H}`; } else el.specSize.textContent = '–';
+    el.specTime.textContent = n ? `${fmtSec(currentTiming().totalMs / 1000)}초` : '–';
+    el.specFmt.textContent = FORMAT_NAME[settings.format];
+    updateScaleHelp();
+  }
+
+  function updateButtons() {
+    const n = state.frames.length;
+    el.makeBtn.disabled = state.busy || state.loading || !n;
+    el.sortBtn.disabled = el.revBtn.disabled = n < 2 || state.loading;
+    el.clearBtn.disabled = !n || state.loading;
+  }
+
+  function settingChanged(opts = {}) {
+    saveSettings();
+    reflectSettings();
+    if (opts.timing) timingChanged();
+    else updateSummary();
+    state.play.dirty = true;
+    markStale();
+  }
+
+  el.dur.addEventListener('input', () => {
+    const v = parseFloat(el.dur.value);
+    if (!isFinite(v) || v < 0.1 || v > 60) return;
+    settings.duration = Math.round(v * 1000) / 1000;
+    settingChanged({ timing: true });
+  });
+  el.dur.addEventListener('change', () => {
+    const v = parseFloat(el.dur.value);
+    if (!isFinite(v)) { el.dur.value = String(settings.duration); return; }
+    const c = Math.min(60, Math.max(0.1, v));
+    settings.duration = Math.round(c * 1000) / 1000;
+    el.dur.value = String(settings.duration);
+    settingChanged({ timing: true });
+  });
+  document.querySelectorAll('input[name="loop"]').forEach((r) => r.addEventListener('change', () => { settings.loop = Number(r.value); settingChanged(); }));
+  document.querySelectorAll('input[name="fmt"]').forEach((r) => r.addEventListener('change', () => { settings.format = r.value; settingChanged({ timing: true }); }));
+  document.querySelectorAll('input[name="scale"]').forEach((r) => r.addEventListener('change', () => { settings.scale = Number(r.value); settingChanged(); }));
+  document.querySelectorAll('input[name="matte"]').forEach((r) => r.addEventListener('change', () => { settings.matte = r.value; settingChanged(); }));
+  document.querySelectorAll('input[name="colors"]').forEach((r) => r.addEventListener('change', () => { settings.colors = Number(r.value); settingChanged(); }));
+  el.th.addEventListener('input', () => { settings.threshold = Number(el.th.value); settingChanged(); });
+  el.matteColor.addEventListener('input', () => { settings.matteColor = el.matteColor.value; settingChanged(); });
+  el.dither.addEventListener('change', () => { settings.dither = el.dither.checked; settingChanged(); });
+  el.wq.addEventListener('input', () => { settings.webpQuality = Number(el.wq.value); settingChanged(); });
+
+  function setBg(bg) {
+    settings.bg = bg;
+    el.stage.dataset.bg = bg;
+    el.outStage.dataset.bg = bg;
+    document.querySelectorAll('.bgswitch [role="radio"]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.bg === bg)));
+  }
+  document.querySelectorAll('.bgswitch [role="radio"]').forEach((b) => b.addEventListener('click', () => { setBg(b.dataset.bg); saveSettings(); }));
+  el.playBtn.addEventListener('click', () => setPlaying(!state.play.on));
+  el.prevBtn.addEventListener('click', () => step(-1));
+  el.nextBtn.addEventListener('click', () => step(1));
+  el.xsheet.addEventListener('click', (e) => {
+    const c = e.target.closest('.c');
+    if (!c) return;
+    setPlaying(false);
+    state.play.idx = Number(c.dataset.i);
+    state.play.dirty = true;
+  });
+
+  /* ------------------------------------------------------------ layout */
+
+  function fitBox(node, W, H, maxW, maxH) {
+    if (!W || !H) return;
+    let w = maxW, h = (w * H) / W;
+    if (h > maxH) { h = maxH; w = (h * W) / H; }
+    node.style.width = Math.max(40, Math.floor(w)) + 'px';
+    node.style.height = Math.max(40, Math.floor(h)) + 'px';
+  }
+  function fitStages() {
+    const narrow = window.innerWidth <= 880;
+    const wide = isWide(state.base.w, state.base.h);
+    const maxW = el.stageWrap.clientWidth || 300;
+    const maxH = wide ? Math.min(Math.round(window.innerHeight * 0.5), 560)
+      : narrow ? Math.round(window.innerHeight * 0.56) : Math.min(Math.round(window.innerHeight * 0.62), 680);
+    fitBox(el.stage, state.base.w || 1500, state.base.h || 3800, maxW, Math.max(160, maxH));
+    if (state.result) {
+      const j = state.result.job;
+      const rw = el.result.clientWidth || 320;
+      if (isWide(j.W, j.H)) fitBox(el.outStage, j.W, j.H, rw, 340);
+      else fitBox(el.outStage, j.W, j.H, narrow ? Math.min(320, rw) : 200, 420);
+    }
+    markTinyCells();
+  }
+  window.addEventListener('resize', fitStages);
+
+  /* ------------------------------------------------------------- making */
+
+  function signature() {
+    return JSON.stringify([state.frames.map((f) => f.id), state.base, settings.duration, settings.loop, settings.format,
+      settings.scale, settings.threshold, matteRGB(), settings.colors, settings.dither, settings.webpQuality]);
+  }
+  function markStale() {
+    if (state.result) el.stale.hidden = signature() === state.result.sig;
+  }
+
+  function buildJob() {
+    const { W, H } = outSize();
+    const tm = currentTiming();
+    const job = {
+      format: settings.format, W, H, N: state.frames.length,
+      delays: tm.steps, loop: settings.loop, totalMs: tm.totalMs,
+      sx: W / state.base.w, sy: H / state.base.h,
+    };
+    if (job.format === 'gif') job.gif = { threshold: settings.threshold, matte: matteRGB(), dither: settings.dither, colors: settings.colors };
+    if (job.format === 'webp') job.webp = { quality: settings.webpQuality / 100 };
+    return job;
+  }
+
+  const work = { canvas: null, ctx: null };
+  async function decodeFrame(frame) {
+    try { return await createImageBitmap(frame.file); }
+    catch (e) { throw Object.assign(new Error(`프레임 “${frame.name}”을(를) 다시 읽지 못했어요.`), { name: 'FrameError' }); }
+  }
+  function paint(ctx, bmp, job) {
+    ctx.clearRect(0, 0, job.W, job.H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bmp, 0, 0, Math.round(bmp.width * job.sx), Math.round(bmp.height * job.sy));
+    if (bmp.close) bmp.close();
+  }
+  async function framePixels(frame, job) {
+    const bmp = await decodeFrame(frame);
+    if (!work.canvas) {
+      work.canvas = document.createElement('canvas');
+      work.canvas.width = job.W; work.canvas.height = job.H;
+      work.ctx = work.canvas.getContext('2d', { willReadFrequently: true });
+    }
+    if (work.canvas.width !== job.W || work.canvas.height !== job.H) { work.canvas.width = job.W; work.canvas.height = job.H; }
+    paint(work.ctx, bmp, job);
+    return work.ctx.getImageData(0, 0, job.W, job.H);
+  }
+  function releaseWork() {
+    if (work.canvas) { work.canvas.width = 1; work.canvas.height = 1; }
+  }
+
+  const cancelError = () => Object.assign(new Error('cancelled'), { name: 'Cancel' });
+
+  let workerUrl = null;
+  function makeWorker() {
+    try {
+      if (!workerUrl) {
+        const src = document.getElementById('core-src').textContent + '\n;UMCore.installWorker();\n';
+        workerUrl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      }
+      return new Worker(workerUrl);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function encodeWithWorker(job, frames, onProgress) {
+    return new Promise((resolve, reject) => {
+      const w = makeWorker();
+      if (!w) { encodeOnMain(job, frames, onProgress).then(resolve, reject); return; }
+      let alive = true, heard = false;
+      const stop = () => { if (alive) { alive = false; w.terminate(); } };
+      current = { cancelled: false, cancel() { this.cancelled = true; stop(); reject(cancelError()); } };
+      w.onmessage = async (ev) => {
+        heard = true;
+        if (!alive) return;
+        const m = ev.data;
+        if (m.type === 'need') {
+          try {
+            const img = await framePixels(frames[m.index], job);
+            if (!alive) return;
+            w.postMessage({ type: 'frame', index: m.index, buffer: img.data.buffer }, [img.data.buffer]);
+          } catch (e) { stop(); reject(e); }
+        } else if (m.type === 'progress') {
+          onProgress(m.done, m.total);
+        } else if (m.type === 'done') {
+          stop(); resolve(m.blob);
+        } else if (m.type === 'error') {
+          stop(); reject(Object.assign(new Error(m.message), { name: m.name }));
+        }
+      };
+      w.onerror = (ev) => {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        if (!alive) return;
+        stop();
+        if (!heard) encodeOnMain(job, frames, onProgress).then(resolve, reject);
+        else reject(new Error((ev && ev.message) || '작업 스레드가 멈췄어요'));
+      };
+      w.postMessage({ type: 'start', job });
+    });
+  }
+
+  async function encodeOnMain(job, frames, onProgress) {
+    const run = { cancelled: false, cancel() { this.cancelled = true; } };
+    current = run;
+    const res = await UMCore.run(job, async (i) => {
+      if (run.cancelled) throw cancelError();
+      await nextFrame();
+      return (await framePixels(frames[i], job)).data;
+    }, onProgress);
+    if (run.cancelled) throw cancelError();
+    return new Blob(res.parts, { type: UMCore.MIME[job.format] });
+  }
+
+  /* WebP: the browser encodes each frame (canvas.toBlob); a few lanes run side by side. */
+  async function encodeWebp(job, frames, onProgress) {
+    const run = { cancelled: false, cancel() { this.cancelled = true; } };
+    current = run;
+    const out = new Array(job.N);
+    const canvases = [];
+    let next = 0, done = 0;
+    const lane = async () => {
+      const c = document.createElement('canvas');
+      c.width = job.W; c.height = job.H;
+      canvases.push(c);
+      const ctx = c.getContext('2d');
+      while (next < job.N) {
+        if (run.cancelled) throw cancelError();
+        const i = next++;
+        paint(ctx, await decodeFrame(frames[i]), job);
+        const blob = await new Promise((res) => c.toBlob(res, 'image/webp', job.webp.quality));
+        if (!blob || blob.type !== 'image/webp') throw Object.assign(new Error('webp'), { name: 'WebPUnsupported' });
+        out[i] = UMCore.webpFrameChunks(new Uint8Array(await blob.arrayBuffer()));
+        onProgress(++done, job.N);
+      }
+    };
+    try {
+      const mem = navigator.deviceMemory || 4;
+      const lanes = Math.min(job.N, mem <= 2 ? 1 : mem <= 4 ? 2 : 3);
+      await Promise.all(Array.from({ length: lanes }, () => lane().catch((e) => { run.cancelled = true; throw e; })));
+    } finally {
+      for (const c of canvases) { c.width = 1; c.height = 1; }
+    }
+    return new Blob(UMCore.muxWebp(out, job.W, job.H, job.delays, job.loop), { type: 'image/webp' });
+  }
+
+  async function make() {
+    if (state.busy || state.loading || !state.frames.length) return;
+    const job = buildJob();
+    const frames = state.frames.slice();
+    const sig = signature();
+    state.busy = true;
+    updateButtons();
+    el.makeBtn.textContent = '만드는 중…';
+    el.cancelBtn.hidden = false;
+    el.progress.hidden = false;
+    el.error.hidden = true;
+    const t0 = performance.now();
+    const onProgress = (done, total) => {
+      el.bar.style.width = ((total ? done / total : 0) * 100).toFixed(1) + '%';
+      const secs = ((performance.now() - t0) / 1000).toFixed(1);
+      el.progText.textContent = done < total ? `프레임 ${done + 1} / ${total} 처리 중 · ${secs}초` : `파일로 묶는 중 · ${secs}초`;
+    };
+    onProgress(0, job.N);
+    try {
+      const blob = job.format === 'webp'
+        ? await encodeWebp(job, frames, onProgress)
+        : await encodeWithWorker(job, frames, onProgress);
+      showResult(blob, job, sig, performance.now() - t0);
+    } catch (e) {
+      if (e && e.name === 'Cancel') {
+        el.progText.textContent = '취소했어요.';
+        el.bar.style.width = '0%';
+      } else {
+        el.progress.hidden = true;
+        showError(e);
+      }
+    } finally {
+      current = null;
+      state.busy = false;
+      releaseWork();
+      el.cancelBtn.hidden = true;
+      reflectSettings();
+      updateButtons();
+    }
+  }
+
+  function showError(e) {
+    const name = e && e.name, msg = String((e && e.message) || e);
+    let text;
+    if (name === 'RangeError' || /alloc|memory|out of memory/i.test(msg)) {
+      text = '메모리가 모자라서 멈췄어요. 출력 크기를 줄이거나 다른 탭을 닫은 뒤 다시 해 보세요.';
+    } else if (name === 'WebPUnsupported') {
+      text = '이 브라우저는 WebP를 만들 수 없어요. 크롬·엣지·파이어폭스에서 열거나 GIF·APNG를 고르세요.';
+    } else if (name === 'FrameError') {
+      text = msg;
+    } else {
+      text = `만드는 중에 문제가 생겼어요. (${msg})`;
+    }
+    el.error.textContent = text;
+    el.error.hidden = false;
+  }
+
+  function showResult(blob, job, sig, ms) {
+    if (state.result) URL.revokeObjectURL(state.result.url);
+    const url = URL.createObjectURL(blob);
+    const filename = `umjjal-${job.W}x${job.H}.${EXT[job.format]}`;
+    state.result = { blob, url, filename, sig, job };
+    el.outImg.src = url;
+    el.outImg.alt = `만든 ${FORMAT_NAME[job.format]} 움짤 (${job.W}×${job.H}, ${job.N}프레임)`;
+    const rows = [
+      ['용량', fmtBytes(blob.size), 'big'],
+      ['형식', `${FORMAT_NAME[job.format]} (.${EXT[job.format]})`],
+      ['크기', `${job.W} × ${job.H} px`],
+      ['프레임', `${job.N}장 · ${fmtSec(job.totalMs / 1000)}초 · ${job.loop === 0 ? '계속 반복' : '한 번만'}`],
+    ];
+    if (job.format === 'gif') rows.push(['투명', `불투명도 ${Math.round((job.gif.threshold / 255) * 100)}% 기준 · ${job.gif.colors}색${job.gif.dither ? ' · 디더링' : ''}`]);
+    if (job.format === 'webp') rows.push(['화질', String(Math.round(job.webp.quality * 100))]);
+    el.facts.innerHTML = rows.map(([k, v, c]) => `<dt>${k}</dt><dd${c ? ` class="${c}"` : ''}>${esc(v)}</dd>`).join('');
+    el.saveBtn.textContent = `다운로드 · ${fmtBytes(blob.size)}`;
+    el.saveNote.textContent = '';
+    const big = blob.size > 10 * 1048576;
+    let tip = '';
+    if (big) {
+      tip = '용량이 큰 편이에요. 올릴 곳에 용량 제한이 있다면 출력 크기를 50%로 줄여 보세요(가로세로가 반이면 대략 1/4로 줄어요).';
+      if (job.format === 'gif' && job.gif.dither) tip += ' 디더링을 끄면 더 줄어요.';
+      if (job.format === 'apng') tip += ' 같은 크기라면 WebP가 훨씬 작아요.';
+    }
+    el.sizeNote.textContent = tip;
+    el.result.classList.toggle('wide', isWide(job.W, job.H));
+    el.result.hidden = false;
+    el.stale.hidden = true;
+    el.bar.style.width = '100%';
+    el.progText.textContent = `완료 · ${(ms / 1000).toFixed(1)}초 걸렸어요`;
+    fitStages();
+  }
+
+  /* plain browser download: the file is saved exactly as encoded, nothing added */
+  function save() {
+    const r = state.result;
+    if (!r) return;
+    const a = document.createElement('a');
+    a.href = r.url;
+    a.download = r.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    el.saveNote.textContent = `${r.filename} 다운로드를 시작했어요. 저장이 안 되면 결과 이미지를 우클릭(휴대폰은 길게 누르기)해서 저장하세요.`;
+  }
+
+  el.makeBtn.addEventListener('click', make);
+  el.cancelBtn.addEventListener('click', () => { if (current) current.cancel(); });
+  el.saveBtn.addEventListener('click', save);
+
+  /* ------------------------------------------------------------ example */
+
+  async function exampleFiles() {
+    const W = 300, H = 760, N = 15;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const floorY = H * 0.9, topY = H * 0.1, R = 46, cx = W / 2;
+    const files = [];
+    for (let k = 0; k < N; k++) {
+      ctx.clearRect(0, 0, W, H);
+      const t = (k + 0.5) / N;
+      const s = (t < 0.5 ? t : 1 - t) * 2;          // 0 at the top, 1 on the floor
+      const contact = s > 0.999;
+      let sy = 1 + 0.22 * s * s, sx = 1 / sy;        // stretch while it falls fast
+      if (contact) { sy = 0.7; sx = 1.34; }          // squash on impact
+      const rx = R * sx, ry = R * sy;
+      const cy = contact ? floorY - ry : topY + ry + (floorY - topY - 2 * ry) * s * s;
+      // contact shadow: soft and semi-transparent
+      const shR = R * (0.55 + 0.95 * s * s), shA = 0.1 + 0.32 * s * s;
+      ctx.save();
+      ctx.translate(cx, floorY);
+      ctx.scale(1, 0.2);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, shR * 1.25);
+      g.addColorStop(0, `rgba(27,33,41,${shA})`);
+      g.addColorStop(0.6, `rgba(27,33,41,${shA * 0.45})`);
+      g.addColorStop(1, 'rgba(27,33,41,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, shR * 1.25, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // faint speed ghosts trailing the ball
+      if (!contact && s > 0.3) {
+        const dir = t < 0.5 ? -1 : 1;
+        for (let j = 1; j <= 2; j++) {
+          ctx.globalAlpha = (0.2 / j) * s;
+          ctx.fillStyle = '#E0452B';
+          ctx.beginPath();
+          ctx.ellipse(cx, cy + dir * j * ry * 0.85, rx * (1 - 0.14 * j), ry * (1 - 0.14 * j), 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // ball
+      const bg = ctx.createRadialGradient(cx - rx * 0.35, cy - ry * 0.4, R * 0.08, cx, cy, R * 1.12);
+      bg.addColorStop(0, '#FF9C7C');
+      bg.addColorStop(0.55, '#E0452B');
+      bg.addColorStop(1, '#A72D18');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#1B2129'; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.ellipse(cx - rx * 0.38, cy - ry * 0.46, rx * 0.17, ry * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      files.push(new File([blob], `예시_${pad(k + 1)}.png`, { type: 'image/png', lastModified: 0 }));
+    }
+    return files;
+  }
+
+  /* -------------------------------------------------------------- start */
+
+  function detectWebp() {
+    return new Promise((res) => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = 2;
+        c.toBlob((b) => res(!!b && b.type === 'image/webp'), 'image/webp', 0.8);
+      } catch (e) { res(false); }
+    });
+  }
+
+  function applyCaps() {
+    const apng = $('#fmtApng'), webp = $('#fmtWebp');
+    apng.disabled = !caps.apng;
+    webp.disabled = !caps.webp;
+    if (!caps.webp) el.webpDesc.textContent = '이 브라우저(사파리 등)는 WebP를 만들 수 없어요. 크롬·엣지·파이어폭스에서 열면 고를 수 있어요.';
+    if ((settings.format === 'webp' && !caps.webp) || (settings.format === 'apng' && !caps.apng)) {
+      settings.format = 'gif';
+      $('#fmtGif').checked = true;
+      settingChanged({ timing: true });
+    }
+  }
+
+  async function init() {
+    applySettingsToUI();
+    setPlaying(state.play.on);
+    timingChanged();
+    fitStages();
+    updateButtons();
+    requestAnimationFrame(tick);
+    caps.webp = await detectWebp();
+    applyCaps();
+    try {
+      await addFiles(await exampleFiles(), { example: true });
+    } catch (e) {
+      setStatus('PNG를 넣어 시작하세요.');
+      framesChanged();
+    }
+    reflectSettings();
+  }
+
+  window.__umjjal = { state, settings, addFiles, make, buildJob };
+  init();
+})();
+</script>
+</body>
+</html>
